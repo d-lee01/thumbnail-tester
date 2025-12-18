@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - HX Thumbnail Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            padding: 40px 0;
+            border-bottom: 2px solid #3a3a3a;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #aaa;
+            font-size: 1.1rem;
+        }
+
+        .section {
+            background: #212121;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #3ea6ff;
+        }
+
+        .upload-area {
+            border: 3px dashed #3a3a3a;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover, .upload-area.drag-over {
+            border-color: #3ea6ff;
+            background: rgba(62, 166, 255, 0.1);
+        }
+
+        .upload-area .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .upload-area p {
+            font-size: 1.2rem;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+
+        .upload-area .small {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .video-list {
+            margin-top: 30px;
+        }
+
+        .video-item {
+            background: #0f0f0f;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: 200px 1fr auto;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .video-item img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        .video-item input {
+            background: #212121;
+            border: 1px solid #3a3a3a;
+            color: #fff;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 1rem;
+            width: 100%;
+        }
+
+        .video-item input:focus {
+            outline: none;
+            border-color: #3ea6ff;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #ff5252;
+        }
+
+        .btn-primary {
+            background: #3ea6ff;
+            color: #fff;
+            padding: 16px 32px;
+            font-size: 1.1rem;
+        }
+
+        .btn-primary:hover {
+            background: #2a8fd9;
+        }
+
+        .btn-secondary {
+            background: #3a3a3a;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #4a4a4a;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .info-box {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h3 {
+            margin-bottom: 10px;
+            color: #3ea6ff;
+        }
+
+        .info-box p {
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        .info-box code {
+            background: #0f0f0f;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #3ea6ff;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .status {
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status.success {
+            background: #43e97b;
+            color: #000;
+        }
+
+        .status.warning {
+            background: #feca57;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Thumbnail Tester Admin</h1>
+            <p>Upload thumbnails and manage your video tests</p>
+        </div>
+
+        <div class="section">
+            <h2>Quick Start Guide</h2>
+            <div class="info-box">
+                <h3>How to use this tool:</h3>
+                <p>
+                    1. <strong>Upload Thumbnails:</strong> Drag and drop thumbnail images below (or click to browse)<br>
+                    2. <strong>Add Titles:</strong> Give each video a compelling title<br>
+                    3. <strong>Publish:</strong> Click "Publish Test" to save and make it live<br>
+                    4. <strong>Share:</strong> Send the tester link to your team<br>
+                    5. <strong>View Results:</strong> Check the Google Sheet for responses
+                </p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Upload Thumbnails</h2>
+            <div class="upload-area" id="uploadArea">
+                <div class="icon">📤</div>
+                <p>Drag & drop thumbnail images here</p>
+                <p class="small">or click to browse (JPG, PNG, max 5MB each)</p>
+            </div>
+            <input type="file" id="fileInput" multiple accept="image/*">
+
+            <div id="videoList" class="video-list">
+                <!-- Videos will appear here -->
+            </div>
+
+            <div id="emptyState" class="empty-state">
+                <div class="icon">📁</div>
+                <p>No thumbnails uploaded yet</p>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-secondary" onclick="clearAll()">Clear All</button>
+                <button class="btn btn-primary" onclick="publishTest()">Publish Test</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Test Status</h2>
+            <div id="statusInfo">
+                <span class="status warning">Not Published</span>
+                <p style="margin-top: 15px; color: #aaa;">Upload and publish thumbnails to make the test live</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Links</h2>
+            <div class="info-box">
+                <h3>📊 View Results:</h3>
+                <p>Results will be sent to your Google Sheet. Set this up in the next step.</p>
+                <br>
+                <h3>🔗 Tester Link:</h3>
+                <p><code id="testerLink">Will appear after publishing</code></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let videos = [];
+
+        // Load existing videos from localStorage
+        function loadVideos() {
+            const saved = localStorage.getItem('thumbnail-test-videos');
+            if (saved) {
+                videos = JSON.parse(saved);
+                renderVideoList();
+            }
+        }
+
+        // Upload area handlers
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        videos.push({
+                            id: Date.now() + Math.random(),
+                            thumbnail: e.target.result,
+                            title: '',
+                            fileName: file.name
+                        });
+                        renderVideoList();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        function renderVideoList() {
+            const list = document.getElementById('videoList');
+            const emptyState = document.getElementById('emptyState');
+
+            if (videos.length === 0) {
+                list.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            list.innerHTML = videos.map((video, index) => `
+                <div class="video-item">
+                    <img src="${video.thumbnail}" alt="Thumbnail ${index + 1}">
+                    <input
+                        type="text"
+                        placeholder="Enter video title..."
+                        value="${video.title}"
+                        onchange="updateTitle(${index}, this.value)"
+                    >
+                    <button class="btn btn-danger" onclick="removeVideo(${index})">
+                        Remove
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function updateTitle(index, title) {
+            videos[index].title = title;
+        }
+
+        function removeVideo(index) {
+            videos.splice(index, 1);
+            renderVideoList();
+        }
+
+        function clearAll() {
+            if (confirm('Are you sure you want to clear all thumbnails?')) {
+                videos = [];
+                renderVideoList();
+                localStorage.removeItem('thumbnail-test-videos');
+            }
+        }
+
+        function publishTest() {
+            // Validate
+            if (videos.length === 0) {
+                alert('Please upload at least one thumbnail');
+                return;
+            }
+
+            const missingTitles = videos.some(v => !v.title.trim());
+            if (missingTitles) {
+                alert('Please add titles to all videos');
+                return;
+            }
+
+            // Save to localStorage (in production, this would save to a backend)
+            localStorage.setItem('thumbnail-test-videos', JSON.stringify(videos));
+
+            // Create data.json file content
+            const dataJson = {
+                videos: videos.map(v => ({
+                    title: v.title,
+                    thumbnail: v.thumbnail
+                }))
+            };
+
+            // Download data.json
+            const blob = new Blob([JSON.stringify(dataJson, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.json';
+            a.click();
+
+            // Update status
+            document.getElementById('statusInfo').innerHTML = `
+                <span class="status success">✓ Published</span>
+                <p style="margin-top: 15px; color: #aaa;">
+                    Test is live with ${videos.length} videos!<br>
+                    <strong>Important:</strong> Place the downloaded data.json file in the same folder as index.html
+                </p>
+            `;
+
+            // Update tester link
+            const testerUrl = window.location.href.replace('admin.html', 'index.html');
+            document.getElementById('testerLink').textContent = testerUrl;
+
+            alert(`Test published successfully!\n\n1. Save the downloaded data.json file\n2. Place it in the same folder as index.html\n3. Share the tester link with your team`);
+        }
+
+        // Load on start
+        loadVideos();
+    </script>
+</body>
+</html>
