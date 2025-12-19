@@ -400,8 +400,8 @@
         <div id="testerScreen" class="hidden">
             <div class="instructions">
                 <h3>Instructions</h3>
-                <p><strong>Select your top 3 video ideas</strong> by clicking on the thumbnails (1st choice, 2nd choice, 3rd choice).<br>
-                For each video, you can also give feedback on the thumbnail or title using the buttons below it.</p>
+                <p><strong>Rate each video</strong> by clicking one of the five rating buttons below each thumbnail.<br>
+                You can rate as many or as few as you like. Your selected rating will light up and glow.</p>
             </div>
 
             <div id="videoGrid" class="video-grid">
@@ -574,12 +574,16 @@
             // If clicking the same rating, unselect it
             if (ratingsData[index] === rating) {
                 ratingsData[index] = null;
-                allButtons.forEach(btn => btn.classList.remove('active'));
+                allButtons.forEach(btn => {
+                    btn.classList.remove('active', 'love', 'interesting', 'meh', 'no', 'hate');
+                });
             } else {
                 // Otherwise, set new rating
                 ratingsData[index] = rating;
-                allButtons.forEach(btn => btn.classList.remove('active'));
-                clickedButton.classList.add('active');
+                allButtons.forEach(btn => {
+                    btn.classList.remove('active', 'love', 'interesting', 'meh', 'no', 'hate');
+                });
+                clickedButton.classList.add('active', rating);
             }
 
             updateUI();
