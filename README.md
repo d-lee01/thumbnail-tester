@@ -29,7 +29,7 @@ function doPost(e) {
     // Add header row if empty
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
-        'Timestamp', 'Name', 'Email', 'Age Group', 'Gender', 'Department',
+        'Timestamp', 'Name', 'Email', 'Age Group', 'Gender',
         'Video Title', 'Rating'
       ]);
     }
@@ -42,7 +42,6 @@ function doPost(e) {
         data.email,
         data.ageGroup,
         data.gender,
-        data.department,
         rating.video,
         rating.rating
       ]);

@@ -377,23 +377,6 @@
                 </select>
             </div>
 
-            <div class="form-group">
-                <label for="department">Department/Role</label>
-                <select id="department" required>
-                    <option value="">Select your department</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Customer Service">Customer Service</option>
-                    <option value="Product">Product</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="Operations">Operations</option>
-                    <option value="Finance">Finance</option>
-                    <option value="HR">HR</option>
-                    <option value="Leadership">Leadership</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
-
             <button class="btn-primary" onclick="startTesting()">Start Testing</button>
         </div>
 
@@ -435,8 +418,7 @@
             name: '',
             email: '',
             ageGroup: '',
-            gender: '',
-            department: ''
+            gender: ''
         };
 
         let videos = [];
@@ -487,16 +469,14 @@
         function startTesting() {
             const ageGroup = document.getElementById('ageGroup').value;
             const gender = document.getElementById('gender').value;
-            const department = document.getElementById('department').value;
 
-            if (!ageGroup || !gender || !department) {
+            if (!ageGroup || !gender) {
                 alert('Please answer all questions');
                 return;
             }
 
             userData.ageGroup = ageGroup;
             userData.gender = gender;
-            userData.department = department;
 
             document.getElementById('demographicsScreen').classList.add('hidden');
             document.getElementById('loadingScreen').classList.remove('hidden');
@@ -516,11 +496,7 @@
                 })
                 .catch(error => {
                     console.error('Error loading videos:', error);
-                    // Show demo data if data.json not found
-                    videos = shuffleArray(getDemoVideos());
-                    renderVideoGrid();
-                    document.getElementById('loadingScreen').classList.add('hidden');
-                    document.getElementById('testerScreen').classList.remove('hidden');
+                    alert('Failed to load videos. Please contact the administrator.');
                 });
         }
 
@@ -645,50 +621,6 @@
             });
         }
 
-        function getDemoVideos() {
-            return [
-                {
-                    title: "10 Hidden Travel Hacks That Save You £1000s",
-                    thumbnail: "https://via.placeholder.com/640x360/667eea/ffffff?text=Travel+Hacks"
-                },
-                {
-                    title: "We Tested Every Airport Lounge in the UK",
-                    thumbnail: "https://via.placeholder.com/640x360/f5576c/ffffff?text=Airport+Lounges"
-                },
-                {
-                    title: "The Truth About Hotel Star Ratings",
-                    thumbnail: "https://via.placeholder.com/640x360/00f2fe/ffffff?text=Hotel+Ratings"
-                },
-                {
-                    title: "Budget vs Luxury: Airport Parking Showdown",
-                    thumbnail: "https://via.placeholder.com/640x360/43e97b/ffffff?text=Parking"
-                },
-                {
-                    title: "Flight Attendant Secrets You Need to Know",
-                    thumbnail: "https://via.placeholder.com/640x360/feca57/ffffff?text=Flight+Secrets"
-                },
-                {
-                    title: "I Spent 24 Hours in an Airport Hotel",
-                    thumbnail: "https://via.placeholder.com/640x360/ff6b6b/ffffff?text=24h+Challenge"
-                },
-                {
-                    title: "Why You're Overpaying for Travel Insurance",
-                    thumbnail: "https://via.placeholder.com/640x360/926fff/ffffff?text=Insurance"
-                },
-                {
-                    title: "The Ultimate Guide to Travel Rewards Points",
-                    thumbnail: "https://via.placeholder.com/640x360/48dbfb/ffffff?text=Rewards"
-                },
-                {
-                    title: "Airplane Food: Behind the Scenes",
-                    thumbnail: "https://via.placeholder.com/640x360/ff9ff3/ffffff?text=Airplane+Food"
-                },
-                {
-                    title: "What Happens to Lost Luggage?",
-                    thumbnail: "https://via.placeholder.com/640x360/54a0ff/ffffff?text=Lost+Luggage"
-                }
-            ];
-        }
     </script>
 </body>
 </html>
