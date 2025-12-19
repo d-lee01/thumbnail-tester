@@ -171,11 +171,6 @@
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
 
-        .video-card.selected {
-            border: 3px solid #3ea6ff;
-            box-shadow: 0 0 20px rgba(62, 166, 255, 0.5);
-        }
-
         .thumbnail-container {
             position: relative;
             padding-bottom: 56.25%; /* 16:9 aspect ratio */
@@ -588,13 +583,11 @@
             if (ratingsData[index] === rating) {
                 ratingsData[index] = null;
                 allButtons.forEach(btn => btn.classList.remove('active'));
-                card.classList.remove('selected');
             } else {
                 // Otherwise, set new rating
                 ratingsData[index] = rating;
                 allButtons.forEach(btn => btn.classList.remove('active'));
                 clickedButton.classList.add('active');
-                card.classList.add('selected');
             }
 
             updateUI();
