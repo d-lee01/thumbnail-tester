@@ -188,24 +188,6 @@
             box-shadow: 0 0 20px rgba(62, 166, 255, 0.5);
         }
 
-        .video-card .rank-badge {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: #3ea6ff;
-            color: #fff;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 1.3rem;
-            z-index: 10;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        }
-
         .thumbnail-container {
             position: relative;
             padding-bottom: 56.25%; /* 16:9 aspect ratio */
@@ -238,57 +220,61 @@
             overflow: hidden;
         }
 
-        .feedback-buttons {
+        .rating-buttons {
             display: flex;
-            gap: 8px;
+            flex-direction: column;
+            gap: 6px;
             margin-top: 8px;
         }
 
-        .feedback-btn {
-            flex: 1;
+        .rating-btn {
             background: #3a3a3a;
-            border: 1px solid #555;
-            color: #aaa;
-            padding: 8px;
-            font-size: 0.75rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .feedback-btn:hover {
-            background: #4a4a4a;
-            color: #fff;
-        }
-
-        .feedback-btn.active {
-            background: #ff6b6b;
-            border-color: #ff6b6b;
-            color: #fff;
-        }
-
-        .none-button {
-            background: #3a3a3a;
-            color: #fff;
             border: 2px solid #555;
-            padding: 16px 32px;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 8px;
+            color: #aaa;
+            padding: 10px;
+            font-size: 0.85rem;
+            border-radius: 6px;
             cursor: pointer;
-            display: block;
-            margin: 30px auto;
             transition: all 0.2s;
+            text-align: left;
+            font-weight: 500;
         }
 
-        .none-button:hover {
+        .rating-btn:hover {
             background: #4a4a4a;
             border-color: #777;
+            color: #fff;
+            transform: translateX(2px);
         }
 
-        .none-button.active {
-            background: #ff6b6b;
-            border-color: #ff6b6b;
+        .rating-btn.active.love {
+            background: #22c55e;
+            border-color: #22c55e;
+            color: #fff;
+        }
+
+        .rating-btn.active.interesting {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+
+        .rating-btn.active.meh {
+            background: #f59e0b;
+            border-color: #f59e0b;
+            color: #fff;
+        }
+
+        .rating-btn.active.no {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: #fff;
+        }
+
+        .rating-btn.active.hate {
+            background: #991b1b;
+            border-color: #991b1b;
+            color: #fff;
         }
 
         .submit-section {
@@ -442,10 +428,6 @@
                 <!-- Videos will be loaded here -->
             </div>
 
-            <button class="none-button" onclick="toggleNone()">
-                <span id="noneText">None of these appeal to me</span>
-            </button>
-
             <div class="submit-section">
                 <button class="btn-submit" onclick="submitFeedback()" id="submitBtn" disabled>
                     Submit Feedback
@@ -477,9 +459,7 @@
         };
 
         let videos = [];
-        let selectedVideos = [];
-        let feedbackData = {};
-        let noneSelected = false;
+        let ratingsData = {};
 
         // Mock Google Sign In (replace with real implementation)
         document.getElementById('googleSignInBtn').addEventListener('click', function() {
@@ -553,133 +533,84 @@
                 card.dataset.index = index;
 
                 card.innerHTML = `
-                    <div class="rank-badge hidden" id="rank-${index}"></div>
                     <div class="thumbnail-container">
                         <img src="${video.thumbnail}" alt="${video.title}">
                     </div>
                     <div class="video-info">
                         <div class="video-title">${video.title}</div>
-                        <div class="feedback-buttons">
-                            <button class="feedback-btn" data-type="thumbnail" onclick="toggleFeedback(${index}, 'thumbnail', event)">
-                                💡 Not the thumbnail
+                        <div class="rating-buttons">
+                            <button class="rating-btn" data-rating="love" onclick="rateVideo(${index}, 'love', event)">
+                                ⭐ Would definitely click
                             </button>
-                            <button class="feedback-btn" data-type="title" onclick="toggleFeedback(${index}, 'title', event)">
-                                📝 Not the title
+                            <button class="rating-btn" data-rating="interesting" onclick="rateVideo(${index}, 'interesting', event)">
+                                👍 Looks interesting
+                            </button>
+                            <button class="rating-btn" data-rating="meh" onclick="rateVideo(${index}, 'meh', event)">
+                                🤷 Meh / Unsure
+                            </button>
+                            <button class="rating-btn" data-rating="no" onclick="rateVideo(${index}, 'no', event)">
+                                👎 Wouldn't click
+                            </button>
+                            <button class="rating-btn" data-rating="hate" onclick="rateVideo(${index}, 'hate', event)">
+                                😕 Actively dislike
                             </button>
                         </div>
                     </div>
                 `;
 
-                card.addEventListener('click', function(e) {
-                    if (!e.target.classList.contains('feedback-btn')) {
-                        selectVideo(index);
-                    }
-                });
-
                 grid.appendChild(card);
             });
         }
 
-        function selectVideo(index) {
-            if (noneSelected) return;
-
-            const videoIndex = selectedVideos.indexOf(index);
-
-            if (videoIndex > -1) {
-                // Deselect
-                selectedVideos.splice(videoIndex, 1);
-            } else {
-                // Select if under 3
-                if (selectedVideos.length < 3) {
-                    selectedVideos.push(index);
-                }
-            }
-
-            updateUI();
-        }
-
-        function toggleFeedback(index, type, event) {
+        function rateVideo(index, rating, event) {
             event.stopPropagation();
 
-            if (!feedbackData[index]) {
-                feedbackData[index] = { thumbnail: false, title: false };
-            }
+            const card = document.querySelector(`[data-index="${index}"]`);
+            const allButtons = card.querySelectorAll('.rating-btn');
+            const clickedButton = event.target;
 
-            feedbackData[index][type] = !feedbackData[index][type];
-
-            const btn = event.target;
-            btn.classList.toggle('active');
-        }
-
-        function toggleNone() {
-            noneSelected = !noneSelected;
-
-            const noneBtn = document.querySelector('.none-button');
-            noneBtn.classList.toggle('active');
-
-            if (noneSelected) {
-                // Clear selections
-                selectedVideos = [];
-                feedbackData = {};
-                document.getElementById('noneText').textContent = 'Actually, let me choose some';
+            // If clicking the same rating, unselect it
+            if (ratingsData[index] === rating) {
+                ratingsData[index] = null;
+                allButtons.forEach(btn => btn.classList.remove('active'));
+                card.classList.remove('selected');
             } else {
-                document.getElementById('noneText').textContent = 'None of these appeal to me';
+                // Otherwise, set new rating
+                ratingsData[index] = rating;
+                allButtons.forEach(btn => btn.classList.remove('active'));
+                clickedButton.classList.add('active');
+                card.classList.add('selected');
             }
 
             updateUI();
         }
 
         function updateUI() {
-            // Update rank badges
-            videos.forEach((_, index) => {
-                const card = document.querySelector(`[data-index="${index}"]`);
-                const rankBadge = document.getElementById(`rank-${index}`);
-                const position = selectedVideos.indexOf(index);
-
-                if (position > -1) {
-                    card.classList.add('selected');
-                    rankBadge.classList.remove('hidden');
-                    rankBadge.textContent = position + 1;
-                } else {
-                    card.classList.remove('selected');
-                    rankBadge.classList.add('hidden');
-                }
-            });
-
-            // Enable/disable submit button
+            // Enable/disable submit button based on how many videos are rated
+            const ratedCount = Object.values(ratingsData).filter(r => r !== null).length;
             const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = !(selectedVideos.length === 3 || noneSelected);
+            submitBtn.disabled = ratedCount === 0;
         }
 
         function submitFeedback() {
             const submitData = {
                 timestamp: new Date().toISOString(),
                 ...userData,
-                firstChoice: selectedVideos[0] !== undefined ? videos[selectedVideos[0]].title : 'None',
-                secondChoice: selectedVideos[1] !== undefined ? videos[selectedVideos[1]].title : 'None',
-                thirdChoice: selectedVideos[2] !== undefined ? videos[selectedVideos[2]].title : 'None',
-                noneAppealing: noneSelected,
-                feedback: []
+                ratings: []
             };
 
-            // Add feedback
-            Object.keys(feedbackData).forEach(index => {
-                const video = videos[index];
-                const feedback = feedbackData[index];
-                if (feedback.thumbnail || feedback.title) {
-                    submitData.feedback.push({
+            // Add all ratings
+            videos.forEach((video, index) => {
+                if (ratingsData[index]) {
+                    submitData.ratings.push({
                         video: video.title,
-                        thumbnailIssue: feedback.thumbnail,
-                        titleIssue: feedback.title
+                        rating: ratingsData[index]
                     });
                 }
             });
 
-            // Send to Google Sheets (placeholder - needs backend setup)
+            // Send to Google Sheets
             console.log('Submit data:', submitData);
-
-            // For now, log to console
-            // In production, this would POST to a Google Apps Script Web App
             sendToGoogleSheets(submitData);
 
             // Show thank you

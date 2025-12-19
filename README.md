@@ -30,24 +30,23 @@ function doPost(e) {
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
         'Timestamp', 'Name', 'Email', 'Age Group', 'Gender', 'Department',
-        '1st Choice', '2nd Choice', '3rd Choice', 'None Appealing', 'Feedback'
+        'Video Title', 'Rating'
       ]);
     }
 
-    // Add data row
-    sheet.appendRow([
-      data.timestamp,
-      data.name,
-      data.email,
-      data.ageGroup,
-      data.gender,
-      data.department,
-      data.firstChoice,
-      data.secondChoice,
-      data.thirdChoice,
-      data.noneAppealing,
-      JSON.stringify(data.feedback)
-    ]);
+    // Add one row for each rated video
+    data.ratings.forEach(rating => {
+      sheet.appendRow([
+        data.timestamp,
+        data.name,
+        data.email,
+        data.ageGroup,
+        data.gender,
+        data.department,
+        rating.video,
+        rating.rating
+      ]);
+    });
 
     return ContentService.createTextOutput(JSON.stringify({result: 'success'}))
       .setMimeType(ContentService.MimeType.JSON);
@@ -93,10 +92,10 @@ function doPost(e) {
 ### 4. View Results
 
 Open your Google Sheet to see:
-- Who voted
+- Who rated each video
 - Their demographic info
-- Their top 3 choices
-- Feedback on thumbnails/titles
+- Individual ratings for each video (love, interesting, meh, wouldn't click, actively dislike)
+- Easy-to-analyze data format
 
 ## Features
 
@@ -104,9 +103,8 @@ Open your Google Sheet to see:
 ✅ Demographic data collection (age, gender, department)
 ✅ Randomized order (removes position bias)
 ✅ YouTube-style grid layout
-✅ Top 3 ranking system
-✅ Thumbnail/title feedback buttons
-✅ "None appeal to me" option
+✅ 5-level rating system per video (Would definitely click → Actively dislike)
+✅ Visual feedback with color-coded ratings
 ✅ Results exported to Google Sheets
 
 ## Tech Stack
@@ -135,9 +133,6 @@ thumbnail-tester/
 - **Export results** from Google Sheets for deeper analysis
 
 ## Troubleshooting
-
-**"None of these appeal to me" won't unselect:**
-Click the button again to toggle it off.
 
 **Thumbnails not loading:**
 Make sure `data.json` is in the same folder as `index.html`.
