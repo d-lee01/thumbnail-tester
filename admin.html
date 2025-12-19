@@ -403,8 +403,12 @@
                 return;
             }
 
-            // Save to localStorage (in production, this would save to a backend)
-            localStorage.setItem('thumbnail-test-videos', JSON.stringify(videos));
+            // Save to localStorage (skip if quota exceeded - not essential for publishing)
+            try {
+                localStorage.setItem('thumbnail-test-videos', JSON.stringify(videos));
+            } catch(e) {
+                console.log('localStorage full, continuing without save');
+            }
 
             // Create data.json file content
             const dataJson = {
