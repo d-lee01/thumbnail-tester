@@ -1,30 +1,65 @@
 /**
- * HX Thumbnail Tester - Google Apps Script Backend
- * This script receives POST requests from the thumbnail tester and writes results to separate tabs per test
+ * HX Thumbnail Tester - Google Apps Script Backend (Self-Service Edition)
+ * Handles image storage in Drive, test config storage, and results collection
  */
+
+// Configuration
+const DRIVE_FOLDER_NAME = 'Thumbnail Tester Images';
 
 /**
- * Handle POST requests from the thumbnail tester
+ * Handle GET requests - Serve test configurations
  */
-function doPost(e) {
+function doGet(e) {
   try {
-    // Parse incoming data
-    const data = JSON.parse(e.postData.contents);
+    const testId = e.parameter.test;
 
-    // Extract test ID
-    const testId = data.testId || 'unknown-test';
+    if (!testId) {
+      return ContentService.createTextOutput(JSON.stringify({
+        'status': 'error',
+        'message': 'Missing test ID parameter'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
 
-    // Get or create the sheet tab for this test
-    const sheet = getOrCreateTestSheet(testId);
+    // Get test configuration from sheet
+    const testConfig = getTestConfig(testId);
 
-    // Write the data to the sheet
-    writeResponseToSheet(sheet, data);
+    if (!testConfig) {
+      return ContentService.createTextOutput(JSON.stringify({
+        'status': 'error',
+        'message': 'Test not found'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
 
     return ContentService.createTextOutput(JSON.stringify({
       'status': 'success',
-      'message': 'Data recorded successfully',
-      'testId': testId
+      'testId': testId,
+      'videos': testConfig.videos
     })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    Logger.log('Error in doGet: ' + error.toString());
+    return ContentService.createTextOutput(JSON.stringify({
+      'status': 'error',
+      'message': error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Handle POST requests - Create tests or submit results
+ */
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+
+    // Check if this is a test creation or result submission
+    if (data.action === 'createTest') {
+      return handleTestCreation(data);
+    } else if (data.testId && data.ratings) {
+      return handleResultSubmission(data);
+    } else {
+      throw new Error('Invalid request format');
+    }
 
   } catch (error) {
     Logger.log('Error in doPost: ' + error.toString());
@@ -36,20 +71,171 @@ function doPost(e) {
 }
 
 /**
- * Get existing sheet tab or create a new one for the test ID
+ * Handle test creation - Store images in Drive and config in Sheet
+ */
+function handleTestCreation(data) {
+  const testId = data.testId;
+  const videos = data.videos || [];
+
+  if (!testId || videos.length === 0) {
+    throw new Error('Invalid test data: missing testId or videos');
+  }
+
+  // Get or create the Drive folder
+  const folder = getOrCreateDriveFolder();
+
+  // Create a subfolder for this test
+  const testFolder = folder.createFolder('Test-' + testId);
+
+  // Upload each image to Drive and get public URLs
+  const videosWithUrls = videos.map((video, index) => {
+    try {
+      // Extract base64 data from data URL
+      const base64Data = video.thumbnail.split(',')[1];
+      const mimeType = video.thumbnail.split(':')[1].split(';')[0];
+      const fileExtension = mimeType.split('/')[1];
+
+      // Decode base64
+      const blob = Utilities.newBlob(
+        Utilities.base64Decode(base64Data),
+        mimeType,
+        `thumbnail-${index + 1}.${fileExtension}`
+      );
+
+      // Upload to Drive
+      const file = testFolder.createFile(blob);
+
+      // Make file publicly viewable
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+      // Get public URL
+      const fileUrl = `https://drive.google.com/uc?export=view&id=${file.getId()}`;
+
+      Logger.log(`Uploaded thumbnail ${index + 1}: ${fileUrl}`);
+
+      return {
+        title: video.title,
+        thumbnail: fileUrl
+      };
+
+    } catch (error) {
+      Logger.log(`Error uploading image ${index}: ${error.toString()}`);
+      throw new Error(`Failed to upload image ${index + 1}: ${error.message}`);
+    }
+  });
+
+  // Store test config in sheet
+  saveTestConfig(testId, videosWithUrls);
+
+  return ContentService.createTextOutput(JSON.stringify({
+    'status': 'success',
+    'message': 'Test created successfully',
+    'testId': testId,
+    'videoCount': videosWithUrls.length
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Handle result submission - Write to results sheet
+ */
+function handleResultSubmission(data) {
+  const testId = data.testId || 'unknown-test';
+
+  // Get or create the results sheet tab for this test
+  const sheet = getOrCreateTestSheet(testId);
+
+  // Write the data to the sheet
+  writeResponseToSheet(sheet, data);
+
+  return ContentService.createTextOutput(JSON.stringify({
+    'status': 'success',
+    'message': 'Data recorded successfully',
+    'testId': testId
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Get or create the Drive folder for storing images
+ */
+function getOrCreateDriveFolder() {
+  const folders = DriveApp.getFoldersByName(DRIVE_FOLDER_NAME);
+
+  if (folders.hasNext()) {
+    return folders.next();
+  } else {
+    const folder = DriveApp.createFolder(DRIVE_FOLDER_NAME);
+    Logger.log('Created Drive folder: ' + DRIVE_FOLDER_NAME);
+    return folder;
+  }
+}
+
+/**
+ * Save test configuration to TestConfigs sheet
+ */
+function saveTestConfig(testId, videos) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = spreadsheet.getSheetByName('TestConfigs');
+
+  // Create TestConfigs sheet if it doesn't exist
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('TestConfigs');
+    sheet.getRange(1, 1, 1, 3).setValues([['Test ID', 'Created', 'Config JSON']]);
+    sheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#4285f4').setFontColor('#ffffff');
+    sheet.setFrozenRows(1);
+  }
+
+  // Store config as JSON
+  const configJson = JSON.stringify({ videos: videos });
+
+  sheet.appendRow([
+    testId,
+    new Date().toISOString(),
+    configJson
+  ]);
+
+  Logger.log('Saved test config for: ' + testId);
+}
+
+/**
+ * Get test configuration from TestConfigs sheet
+ */
+function getTestConfig(testId) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getSheetByName('TestConfigs');
+
+  if (!sheet) {
+    return null;
+  }
+
+  const data = sheet.getDataRange().getValues();
+
+  // Skip header row, search for testId
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === testId) {
+      try {
+        return JSON.parse(data[i][2]);
+      } catch (error) {
+        Logger.log('Error parsing config for ' + testId + ': ' + error.toString());
+        return null;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get existing results sheet tab or create a new one for the test ID
  */
 function getOrCreateTestSheet(testId) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheetName = 'Test-' + testId;
 
-  // Try to get existing sheet
   let sheet = spreadsheet.getSheetByName(sheetName);
 
-  // If sheet doesn't exist, create it
   if (!sheet) {
     sheet = spreadsheet.insertSheet(sheetName);
 
-    // Add header row
     const headers = [
       'Timestamp',
       'Test ID',
@@ -63,29 +249,25 @@ function getOrCreateTestSheet(testId) {
 
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
-    // Format header row
     const headerRange = sheet.getRange(1, 1, 1, headers.length);
     headerRange.setFontWeight('bold');
     headerRange.setBackground('#4285f4');
     headerRange.setFontColor('#ffffff');
 
-    // Freeze header row
     sheet.setFrozenRows(1);
 
-    // Auto-resize columns
     for (let i = 1; i <= headers.length; i++) {
       sheet.autoResizeColumn(i);
     }
 
-    Logger.log('Created new sheet: ' + sheetName);
+    Logger.log('Created new results sheet: ' + sheetName);
   }
 
   return sheet;
 }
 
 /**
- * Write a response to the sheet
- * Each rating gets its own row
+ * Write a response to the results sheet
  */
 function writeResponseToSheet(sheet, data) {
   const timestamp = data.timestamp || new Date().toISOString();
@@ -95,11 +277,9 @@ function writeResponseToSheet(sheet, data) {
   const ageGroup = data.ageGroup || '';
   const gender = data.gender || '';
 
-  // Each rating becomes a separate row
   const ratings = data.ratings || [];
 
   if (ratings.length === 0) {
-    // If no ratings, still record the response
     sheet.appendRow([
       timestamp,
       testId,
@@ -111,7 +291,6 @@ function writeResponseToSheet(sheet, data) {
       ''
     ]);
   } else {
-    // Write each rating as a separate row
     ratings.forEach(rating => {
       sheet.appendRow([
         timestamp,
@@ -130,10 +309,28 @@ function writeResponseToSheet(sheet, data) {
 }
 
 /**
- * Test function to verify script works
- * Run this from the Apps Script editor to test
+ * Test function - Create a sample test
  */
-function testDoPost() {
+function testCreateTest() {
+  const testData = {
+    action: 'createTest',
+    testId: 'test-sample-' + new Date().getTime(),
+    videos: [
+      {
+        title: 'Sample Video 1',
+        thumbnail: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+      }
+    ]
+  };
+
+  const result = handleTestCreation(testData);
+  Logger.log(result.getContent());
+}
+
+/**
+ * Test function - Submit sample results
+ */
+function testSubmitResults() {
   const testData = {
     testId: 'test-sample-123',
     timestamp: new Date().toISOString(),
@@ -143,8 +340,7 @@ function testDoPost() {
     gender: 'Prefer not to say',
     ratings: [
       { video: 'Test Video 1', rating: 'love' },
-      { video: 'Test Video 2', rating: 'interesting' },
-      { video: 'Test Video 3', rating: 'meh' }
+      { video: 'Test Video 2', rating: 'interesting' }
     ]
   };
 
@@ -155,5 +351,5 @@ function testDoPost() {
   };
 
   const result = doPost(mockEvent);
-  Logger.log('Test result: ' + result.getContent());
+  Logger.log(result.getContent());
 }

@@ -1,194 +1,239 @@
-# Thumbnail Tester - Deployment Guide
+# Thumbnail Tester - Self-Service Deployment Guide
 
-## Overview
-Your thumbnail tester now supports multiple independent tests! Each test gets:
-- A unique test ID
-- Its own data file (`data-{testId}.json`)
-- Its own Google Sheets tab for results
+## 🎉 What This Is
+
+A **fully self-service** thumbnail testing platform where:
+- ✅ Anyone visits your admin page
+- ✅ Uploads thumbnails (full quality)
+- ✅ Gets instant shareable test URL
+- ✅ No manual file uploads
+- ✅ No GitHub access needed
+- ✅ Images stored in Google Drive
+- ✅ Results in Google Sheets
+
+**One deployment serves unlimited users!**
 
 ---
 
-## Step 1: Deploy the Apps Script
+## 📋 One-Time Setup (You do this once)
 
-### Option A: Using Google Apps Script Web Editor (Easier)
+### Step 1: Update Your Apps Script
 
-1. **Open your Google Sheet** where you want results to appear
+1. **Open your Google Sheet** (the one you created earlier)
 
-2. **Open Apps Script Editor**
-   - Go to: Extensions → Apps Script
+2. **Go to Extensions → Apps Script**
 
-3. **Replace the existing code**
-   - Delete any existing code in `Code.gs`
-   - Copy all contents from `Code.gs` (in this folder)
-   - Paste into the Apps Script editor
+3. **Replace ALL code** with the contents of `Code.gs` from this repo
 
-4. **Deploy as Web App**
-   - Click "Deploy" → "New deployment"
-   - Click the gear icon → Select "Web app"
+4. **Save** (💾 icon or Cmd+S)
+
+5. **Deploy as Web App:**
+   - Click **Deploy** → **New deployment**
+   - Click ⚙️ icon → Select **"Web app"**
    - Settings:
-     - Description: "Thumbnail Tester Backend"
+     - Description: `Thumbnail Tester Self-Service Backend`
      - Execute as: **Me**
      - Who has access: **Anyone**
-   - Click "Deploy"
-   - **Copy the Web App URL** (you'll need this!)
+   - Click **Deploy**
+   - **Authorize** permissions when prompted
+   - **Copy the Web App URL**
 
-5. **Update index.html**
-   - Open `index.html` in a text editor
-   - Find line ~628: `const SHEET_URL = 'https://script.google.com/...'`
+6. **Update the Web App URL in both files:**
+   - Open `admin.html` in a text editor
+   - Find line ~450: `const SHEET_URL = '...'`
    - Replace with your new Web App URL
-   - Save the file
+   - Open `index.html` in a text editor
+   - Find line ~520: `const SHEET_URL = '...'`
+   - Replace with the same URL
+   - Save both files
 
----
+### Step 2: Deploy to GitHub Pages (Optional but Recommended)
 
-### Option B: Using clasp CLI (For developers)
+If you want a public URL anyone can access:
 
 ```bash
-# Install clasp if you haven't
-npm install -g @google/clasp
+# Commit changes
+git add .
+git commit -m "Enable self-service test creation"
+git push origin main
 
-# Login to Google
-clasp login
-
-# Create a new script (or use existing)
-clasp create --title "Thumbnail Tester Backend" --type sheets --rootDir .
-
-# Push the code
-clasp push
-
-# Deploy as web app
-clasp deploy --description "Thumbnail Tester v1"
-
-# Get the deployment URL
-clasp deployments
+# GitHub Pages should auto-deploy
+# Your site will be at: https://YOUR-USERNAME.github.io/thumbnail-tester/
 ```
 
-Then update `index.html` with the Web App URL as described above.
+**OR** just host the HTML files anywhere (any web server, Netlify, Vercel, etc.)
 
 ---
 
-## Step 2: Create a Test
+## 🚀 How Users Create Tests
 
-1. **Open `admin.html`** in your browser
+### For Test Creators (Anyone):
 
-2. **Generate or Enter a Test ID**
-   - Click "Generate Random ID" for an automatic ID
-   - OR type your own (e.g., `marketing-team-jan2026`)
-   - Use only letters, numbers, and hyphens
+1. **Open the admin page:**
+   ```
+   https://YOUR-USERNAME.github.io/thumbnail-tester/admin.html
+   ```
 
-3. **Upload Thumbnails**
-   - Drag and drop thumbnail images
+2. **Generate or enter a Test ID**
+   - Click "Generate Random ID" for automatic ID
+   - OR type your own (e.g., `marketing-jan-2026`)
+
+3. **Upload thumbnails**
+   - Drag & drop thumbnail images
    - Add titles to each video
 
-4. **Publish Test**
-   - Click "Publish Test"
-   - Download the `data-{testId}.json` file
-   - Place it in the same folder as `index.html` and `admin.html`
+4. **Click "Publish Test"**
+   - Images automatically upload to Google Drive
+   - Test config saved to Google Sheet
+   - **Get shareable URL immediately!**
 
-5. **Copy the Test URL**
-   - Example: `https://yoursite.com/index.html?test=marketing-team-jan2026`
-   - Share this URL with your testers
+5. **Share the test URL** with your team:
+   ```
+   https://YOUR-USERNAME.github.io/thumbnail-tester/index.html?test=YOUR-TEST-ID
+   ```
 
----
+### For Test Takers:
 
-## Step 3: Run a Test
-
-1. **Testers open the URL** you provided
-
-2. **They sign in** with Google
-
-3. **Complete demographics** questions
-
-4. **Rate thumbnails** (select rating buttons)
-
-5. **Submit feedback**
-
-6. **Results appear automatically** in your Google Sheet
-   - New tab created: `Test-{testId}`
-   - Each submission adds rows to that tab
+1. Click the test URL
+2. Sign in with Google
+3. Fill out demographics
+4. Rate thumbnails
+5. Submit feedback
+6. Done! Results appear in the Google Sheet
 
 ---
 
-## Managing Multiple Tests
+## 📊 Viewing Results
 
-### Active Tests
-Each test is completely independent:
-- Different URL: `?test=test1` vs `?test=test2`
-- Different data file: `data-test1.json` vs `data-test2.json`
-- Different Sheet tab: `Test-test1` vs `Test-test2`
+### In Your Google Sheet:
 
-### Test Organization
-Recommended naming conventions:
-- `marketing-q1-2026` - By department and time
-- `sarah-thumbnails-jan14` - By creator and date
-- `variant-a` / `variant-b` - For A/B testing
+- **TestConfigs tab** - All published tests and their configs
+- **Test-{testId} tabs** - Results for each specific test
+- **Thumbnail Tester Images folder** in Google Drive - All uploaded images organized by test
 
-### File Management
-Your folder will look like:
+---
+
+## 🔧 Behind the Scenes
+
+### What Happens When Someone Publishes:
+
 ```
-/thumbnail-tester/
-  ├── index.html
-  ├── admin.html
-  ├── data-test1.json
-  ├── data-test2.json
-  ├── data-marketing-q1.json
-  └── ...
+User uploads images in browser
+  ↓
+POST to Apps Script with base64 images
+  ↓
+Apps Script creates Drive folder "Test-{testId}"
+  ↓
+Uploads each image to Drive
+  ↓
+Makes images publicly viewable
+  ↓
+Stores test config with Drive URLs in Sheet
+  ↓
+Returns success to admin
+  ↓
+Admin gets shareable URL instantly
 ```
 
----
+### What Happens When Someone Takes Test:
 
-## Troubleshooting
-
-### "No test ID provided in URL"
-- Make sure the URL includes `?test=your-test-id`
-- Check that the test ID matches the data file name
-
-### "Test data file not found"
-- Verify `data-{testId}.json` is in the same folder as `index.html`
-- Check the filename exactly matches the test ID
-
-### Results not appearing in Google Sheets
-- Check the Apps Script deployment is set to "Anyone" access
-- Verify the SHEET_URL in `index.html` is correct
-- Check Apps Script execution logs (View → Executions)
-
-### Testing the Apps Script
-Run the `testDoPost()` function in the Apps Script editor:
-1. Select `testDoPost` from the function dropdown
-2. Click "Run"
-3. Check Executions log for results
-4. Verify a new tab "Test-test-sample-123" appears in your sheet
+```
+User opens index.html?test=abc123
+  ↓
+GET request to Apps Script
+  ↓
+Apps Script looks up test config in Sheet
+  ↓
+Returns video titles + Drive image URLs
+  ↓
+Browser loads images from Drive
+  ↓
+User submits ratings
+  ↓
+POST to Apps Script
+  ↓
+Apps Script creates/updates results tab
+```
 
 ---
 
-## What Changed?
+## 🎯 Key Features
 
-### admin.html
-- ✅ Added Test ID input field
-- ✅ Auto-generate random test IDs
-- ✅ Save as `data-{testId}.json`
-- ✅ Show shareable test URL with test parameter
+### For Administrators:
+- ✅ One-time setup
+- ✅ Centralized results in one Sheet
+- ✅ All images organized in one Drive folder
+- ✅ Track all tests in TestConfigs tab
 
-### index.html
-- ✅ Read test ID from URL parameter `?test=xxx`
-- ✅ Load corresponding `data-{testId}.json`
-- ✅ Send test ID with all submissions
+### For Test Creators:
+- ✅ No setup required
+- ✅ Just visit admin URL
+- ✅ Upload → Publish → Share
+- ✅ Full quality images (no compression)
+- ✅ Instant shareable links
 
-### Apps Script (Code.gs)
-- ✅ Receive test ID from submissions
-- ✅ Auto-create sheet tabs per test ID
-- ✅ Route data to correct tab
-- ✅ Format headers and freeze rows
-
----
-
-## Next Steps
-
-1. Deploy the Apps Script (Step 1)
-2. Create your first test (Step 2)
-3. Share the test URL with a small group
-4. Verify results appear in correct Sheet tab
-5. Create additional tests as needed!
+### For Test Takers:
+- ✅ Just click link
+- ✅ Sign in and rate
+- ✅ Fast loading from Drive
+- ✅ Clean, modern interface
 
 ---
 
-**Questions?** Check the troubleshooting section or review the Apps Script execution logs.
+## 🔐 Security & Privacy
+
+- **Apps Script runs as YOU** - All Drive/Sheet access uses your permissions
+- **Images are public with link** - Anyone with Drive URL can view (required for testing)
+- **Results are private** - Only you can access the Google Sheet
+- **No user auth for creating tests** - Anyone can create tests (by design)
+- **Tester auth via Google** - Testers sign in to prevent spam
+
+---
+
+## 🐛 Troubleshooting
+
+### "Failed to publish test"
+- Check Apps Script is deployed with "Anyone" access
+- Verify Web App URL is correct in admin.html
+- Check Apps Script execution logs
+
+### "Test not found" when loading
+- Test ID might be mistyped
+- Test might not have been published successfully
+- Check TestConfigs tab in Sheet for the test ID
+
+### Images not loading
+- Check Drive folder permissions
+- Verify images were uploaded (check Drive folder)
+- Check browser console for errors
+
+### OAuth errors
+- Make sure you're using HTTPS (GitHub Pages) not file://
+- Clear browser cache and try again
+
+---
+
+## 📈 Scaling
+
+This setup handles:
+- ✅ Unlimited tests
+- ✅ Unlimited users creating tests
+- ✅ 10-20 thumbnails per test (recommended)
+- ✅ Hundreds of testers per test
+
+**Limits:**
+- Google Drive: 15GB free storage
+- Apps Script: 6 min execution time per request
+- Very large images (>5MB each) may timeout
+
+**Recommendations:**
+- Keep thumbnails under 2MB each
+- Limit to 20 thumbnails per test for best performance
+
+---
+
+## 🎊 You're Done!
+
+Your thumbnail tester is now live and ready for anyone to use. No manual steps, no file uploads, just pure self-service magic!
+
+Share your admin URL and let people create their own tests! 🚀
