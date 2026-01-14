@@ -120,8 +120,9 @@ function handleTestCreation(data) {
       // Make file publicly viewable
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-      // Get public URL
-      const fileUrl = `https://drive.google.com/uc?export=view&id=${file.getId()}`;
+      // Get public URL - use thumbnail endpoint for better embedding support
+      const fileId = file.getId();
+      const fileUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
 
       Logger.log(`Uploaded thumbnail ${index + 1}: ${fileUrl}`);
 
