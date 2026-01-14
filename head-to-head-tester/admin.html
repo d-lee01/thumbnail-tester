@@ -611,6 +611,9 @@
                 const date = new Date(test.created).toLocaleString();
                 const matchupsInfo = test.matchupsPerThumbnail ? `${test.matchupsPerThumbnail} matchups per thumbnail` : '';
 
+                // For head-to-head tests, note that results are in the Summary tab
+                const resultsLabel = '📊 View Summary';
+
                 return `
                     <div class="test-card" data-test-id="${test.testId}">
                         <h3>${test.testId}</h3>
@@ -620,7 +623,7 @@
                         <div class="test-card-actions">
                             <button class="btn-copy" onclick="copyTestUrl('${testUrl}')">📋 Copy Link</button>
                             <button class="btn-open" onclick="window.open('${testUrl}', '_blank')">🔗 Open Test</button>
-                            <button class="btn-results" onclick="window.open('${sheetUrl}', '_blank')">📊 View Results</button>
+                            <button class="btn-results" onclick="window.open('${sheetUrl}', '_blank')" title="Open Google Sheets - look for '${test.testId}-Summary' tab">${resultsLabel}</button>
                             <button class="btn-delete" onclick="deleteTest('${test.testId}')">🗑️ Delete</button>
                         </div>
                     </div>

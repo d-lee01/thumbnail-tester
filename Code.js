@@ -200,6 +200,9 @@ function handleHeadToHeadResultSubmission(data) {
   // Write the data to the sheet
   writeHeadToHeadResponseToSheet(sheet, data);
 
+  // Update summary sheet with aggregated results
+  updateHeadToHeadSummary(testId);
+
   return ContentService.createTextOutput(JSON.stringify({
     'status': 'success',
     'message': 'Data recorded successfully',
@@ -336,9 +339,164 @@ function getOrCreateTestSheet(testId, testType) {
     }
 
     Logger.log('Created new results sheet: ' + sheetName);
+
+    // Create summary sheet for head-to-head tests
+    if (testType === 'head-to-head') {
+      createHeadToHeadSummarySheet(testId);
+    }
   }
 
   return sheet;
+}
+
+/**
+ * Create a summary sheet for head-to-head test results
+ */
+function createHeadToHeadSummarySheet(testId) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const summarySheetName = 'Test-' + testId + '-Summary';
+
+  // Check if summary sheet already exists
+  let summarySheet = spreadsheet.getSheetByName(summarySheetName);
+  if (summarySheet) {
+    return summarySheet;
+  }
+
+  // Create summary sheet
+  summarySheet = spreadsheet.insertSheet(summarySheetName);
+
+  // Set up headers
+  const headers = ['Rank', 'Thumbnail', 'Wins', 'Losses', 'Total Matchups', 'Win Rate %'];
+  summarySheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+  const headerRange = summarySheet.getRange(1, 1, 1, headers.length);
+  headerRange.setFontWeight('bold');
+  headerRange.setBackground('#28a745');
+  headerRange.setFontColor('#ffffff');
+  headerRange.setHorizontalAlignment('center');
+
+  summarySheet.setFrozenRows(1);
+
+  // Auto-resize columns
+  for (let i = 1; i <= headers.length; i++) {
+    summarySheet.setColumnWidth(i, i === 2 ? 250 : 120);
+  }
+
+  Logger.log('Created summary sheet: ' + summarySheetName);
+
+  return summarySheet;
+}
+
+/**
+ * Update head-to-head summary sheet with aggregated results
+ */
+function updateHeadToHeadSummary(testId) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const dataSheetName = 'Test-' + testId;
+  const summarySheetName = 'Test-' + testId + '-Summary';
+
+  const dataSheet = spreadsheet.getSheetByName(dataSheetName);
+  const summarySheet = spreadsheet.getSheetByName(summarySheetName);
+
+  if (!dataSheet || !summarySheet) {
+    Logger.log('Could not find data or summary sheet for: ' + testId);
+    return;
+  }
+
+  // Get all data (skip header)
+  const data = dataSheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    // No data yet
+    return;
+  }
+
+  // Aggregate results - column 10 (index 9) is the Winner
+  const thumbnailStats = {};
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const thumbnailA = row[7]; // Column H
+    const thumbnailB = row[8]; // Column I
+    const winner = row[9];     // Column J
+
+    // Initialize stats for thumbnails
+    if (!thumbnailStats[thumbnailA]) {
+      thumbnailStats[thumbnailA] = { wins: 0, losses: 0 };
+    }
+    if (!thumbnailStats[thumbnailB]) {
+      thumbnailStats[thumbnailB] = { wins: 0, losses: 0 };
+    }
+
+    // Record win/loss
+    if (winner === thumbnailA) {
+      thumbnailStats[thumbnailA].wins++;
+      thumbnailStats[thumbnailB].losses++;
+    } else if (winner === thumbnailB) {
+      thumbnailStats[thumbnailB].wins++;
+      thumbnailStats[thumbnailA].losses++;
+    }
+  }
+
+  // Convert to array and calculate win rates
+  const results = [];
+  for (const thumbnail in thumbnailStats) {
+    const stats = thumbnailStats[thumbnail];
+    const total = stats.wins + stats.losses;
+    const winRate = total > 0 ? (stats.wins / total) * 100 : 0;
+
+    results.push({
+      thumbnail: thumbnail,
+      wins: stats.wins,
+      losses: stats.losses,
+      total: total,
+      winRate: winRate
+    });
+  }
+
+  // Sort by win rate (descending)
+  results.sort((a, b) => b.winRate - a.winRate);
+
+  // Clear existing data (keep header)
+  if (summarySheet.getLastRow() > 1) {
+    summarySheet.getRange(2, 1, summarySheet.getLastRow() - 1, 6).clear();
+  }
+
+  // Write results
+  const outputData = results.map((result, index) => [
+    index + 1,                    // Rank
+    result.thumbnail,             // Thumbnail
+    result.wins,                  // Wins
+    result.losses,                // Losses
+    result.total,                 // Total Matchups
+    result.winRate.toFixed(1)     // Win Rate %
+  ]);
+
+  if (outputData.length > 0) {
+    summarySheet.getRange(2, 1, outputData.length, 6).setValues(outputData);
+
+    // Format the data
+    const dataRange = summarySheet.getRange(2, 1, outputData.length, 6);
+    dataRange.setHorizontalAlignment('center');
+
+    // Highlight top 3
+    if (outputData.length >= 1) {
+      summarySheet.getRange(2, 1, 1, 6).setBackground('#ffd700'); // Gold
+    }
+    if (outputData.length >= 2) {
+      summarySheet.getRange(3, 1, 1, 6).setBackground('#c0c0c0'); // Silver
+    }
+    if (outputData.length >= 3) {
+      summarySheet.getRange(4, 1, 1, 6).setBackground('#cd7f32'); // Bronze
+    }
+
+    // Bold rank column
+    summarySheet.getRange(2, 1, outputData.length, 1).setFontWeight('bold');
+
+    // Bold win rate column
+    summarySheet.getRange(2, 6, outputData.length, 1).setFontWeight('bold');
+  }
+
+  Logger.log('Updated summary for test: ' + testId);
 }
 
 /**
@@ -547,6 +705,11 @@ function handleTestDeletion(data) {
 
   // Delete results sheet tab if it exists
   deleteTestSheet(testId);
+
+  // Delete summary sheet tab if it exists (for head-to-head tests)
+  if (testId.startsWith('h2h-')) {
+    deleteTestSheet(testId + '-Summary');
+  }
 
   // Delete Drive folder if it exists
   deleteTestDriveFolder(testId);
