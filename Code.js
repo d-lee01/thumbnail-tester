@@ -8,40 +8,52 @@ const DRIVE_FOLDER_NAME = 'Thumbnail Tester Images';
 
 /**
  * Handle GET requests - Serve test configurations
+ * Uses JSONP to avoid CORS issues
  */
 function doGet(e) {
   try {
     const testId = e.parameter.test;
+    const callback = e.parameter.callback || 'callback';
 
     if (!testId) {
-      return ContentService.createTextOutput(JSON.stringify({
+      const errorResponse = {
         'status': 'error',
         'message': 'Missing test ID parameter'
-      })).setMimeType(ContentService.MimeType.JSON);
+      };
+      return ContentService.createTextOutput(callback + '(' + JSON.stringify(errorResponse) + ')')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
     }
 
     // Get test configuration from sheet
     const testConfig = getTestConfig(testId);
 
     if (!testConfig) {
-      return ContentService.createTextOutput(JSON.stringify({
+      const errorResponse = {
         'status': 'error',
         'message': 'Test not found'
-      })).setMimeType(ContentService.MimeType.JSON);
+      };
+      return ContentService.createTextOutput(callback + '(' + JSON.stringify(errorResponse) + ')')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
     }
 
-    return ContentService.createTextOutput(JSON.stringify({
+    const successResponse = {
       'status': 'success',
       'testId': testId,
       'videos': testConfig.videos
-    })).setMimeType(ContentService.MimeType.JSON);
+    };
+
+    return ContentService.createTextOutput(callback + '(' + JSON.stringify(successResponse) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
 
   } catch (error) {
     Logger.log('Error in doGet: ' + error.toString());
-    return ContentService.createTextOutput(JSON.stringify({
+    const callback = e.parameter.callback || 'callback';
+    const errorResponse = {
       'status': 'error',
       'message': error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    };
+    return ContentService.createTextOutput(callback + '(' + JSON.stringify(errorResponse) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
 }
 
