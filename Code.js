@@ -7,14 +7,27 @@
 const DRIVE_FOLDER_NAME = 'Thumbnail Tester Images';
 
 /**
- * Handle GET requests - Serve test configurations
+ * Handle GET requests - Serve test configurations or list all tests
  * Uses JSONP to avoid CORS issues
  */
 function doGet(e) {
   try {
     const testId = e.parameter.test;
+    const action = e.parameter.action;
     const callback = e.parameter.callback || 'callback';
 
+    // List all tests
+    if (action === 'listTests') {
+      const tests = getAllTests();
+      const response = {
+        'status': 'success',
+        'tests': tests
+      };
+      return ContentService.createTextOutput(callback + '(' + JSON.stringify(response) + ')')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+
+    // Get specific test
     if (!testId) {
       const errorResponse = {
         'status': 'error',
@@ -58,15 +71,17 @@ function doGet(e) {
 }
 
 /**
- * Handle POST requests - Create tests or submit results
+ * Handle POST requests - Create tests, submit results, or delete tests
  */
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
 
-    // Check if this is a test creation or result submission
+    // Check what type of request this is
     if (data.action === 'createTest') {
       return handleTestCreation(data);
+    } else if (data.action === 'deleteTest') {
+      return handleTestDeletion(data);
     } else if (data.testId && data.ratings) {
       return handleResultSubmission(data);
     } else {
@@ -365,4 +380,121 @@ function testSubmitResults() {
 
   const result = doPost(mockEvent);
   Logger.log(result.getContent());
+}
+
+/**
+ * Get all tests from TestConfigs sheet
+ */
+function getAllTests() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getSheetByName('TestConfigs');
+
+  if (!sheet) {
+    return [];
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const tests = [];
+
+  // Skip header row (index 0)
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0]) { // If test ID exists
+      try {
+        const config = JSON.parse(data[i][2]);
+        tests.push({
+          testId: data[i][0],
+          created: data[i][1],
+          videoCount: config.videos ? config.videos.length : 0
+        });
+      } catch (error) {
+        Logger.log('Error parsing test config for ' + data[i][0] + ': ' + error.toString());
+      }
+    }
+  }
+
+  // Sort by created date, newest first
+  tests.sort((a, b) => new Date(b.created) - new Date(a.created));
+
+  return tests;
+}
+
+/**
+ * Handle test deletion
+ */
+function handleTestDeletion(data) {
+  const testId = data.testId;
+
+  if (!testId) {
+    throw new Error('Missing test ID for deletion');
+  }
+
+  // Delete from TestConfigs sheet
+  deleteTestConfig(testId);
+
+  // Delete results sheet tab if it exists
+  deleteTestSheet(testId);
+
+  // Delete Drive folder if it exists
+  deleteTestDriveFolder(testId);
+
+  return ContentService.createTextOutput(JSON.stringify({
+    'status': 'success',
+    'message': 'Test deleted successfully',
+    'testId': testId
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Delete test configuration from TestConfigs sheet
+ */
+function deleteTestConfig(testId) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getSheetByName('TestConfigs');
+
+  if (!sheet) {
+    return;
+  }
+
+  const data = sheet.getDataRange().getValues();
+
+  // Find and delete the row
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === testId) {
+      sheet.deleteRow(i + 1); // +1 because sheet rows are 1-indexed
+      Logger.log('Deleted test config for: ' + testId);
+      return;
+    }
+  }
+}
+
+/**
+ * Delete test results sheet tab
+ */
+function deleteTestSheet(testId) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = 'Test-' + testId;
+  const sheet = spreadsheet.getSheetByName(sheetName);
+
+  if (sheet) {
+    spreadsheet.deleteSheet(sheet);
+    Logger.log('Deleted results sheet: ' + sheetName);
+  }
+}
+
+/**
+ * Delete test Drive folder
+ */
+function deleteTestDriveFolder(testId) {
+  try {
+    const mainFolder = getOrCreateDriveFolder();
+    const folders = mainFolder.getFoldersByName('Test-' + testId);
+
+    if (folders.hasNext()) {
+      const folder = folders.next();
+      folder.setTrashed(true);
+      Logger.log('Deleted Drive folder: Test-' + testId);
+    }
+  } catch (error) {
+    Logger.log('Error deleting Drive folder: ' + error.toString());
+  }
 }

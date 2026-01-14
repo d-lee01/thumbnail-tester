@@ -223,6 +223,64 @@
             background: #feca57;
             color: #000;
         }
+
+        .test-card {
+            background: #0f0f0f;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3ea6ff;
+        }
+
+        .test-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .test-card h3 {
+            margin: 0;
+            color: #3ea6ff;
+            font-size: 1.2rem;
+        }
+
+        .test-card-info {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        .test-card-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .btn-delete {
+            background: #ff6b6b;
+            color: #fff;
+        }
+
+        .btn-delete:hover {
+            background: #ff5252;
+        }
+
+        .empty-tests {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .empty-tests .icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -247,7 +305,18 @@
         </div>
 
         <div class="section">
-            <h2>Upload Thumbnails</h2>
+            <h2>Your Tests</h2>
+            <div id="testListSection">
+                <div id="testListLoading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading tests...</p>
+                </div>
+                <div id="testList"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Create New Test</h2>
 
             <div class="info-box" style="margin-bottom: 20px;">
                 <h3>Test ID</h3>
@@ -504,6 +573,11 @@
 
                 alert(`🎉 Test published successfully!\n\nTest ID: ${testId}\n\nShare this link with your team:\n${testerUrl}\n\n✅ All images stored in Google Drive\n✅ No files to upload\n✅ Ready to use immediately!`);
 
+                // Refresh the test list
+                setTimeout(() => {
+                    loadTests();
+                }, 1000);
+
             } catch (error) {
                 console.error('Error publishing test:', error);
                 document.getElementById('statusInfo').innerHTML = `
@@ -517,8 +591,136 @@
             }
         }
 
+        // Load and display all tests
+        async function loadTests() {
+            const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxrRs5z4nJQTvMa9H_bE-Z__NkiMy3ywQVRx30YzrmIU_OwacVu073WpN8ziKCQJiagEA/exec';
+            const callbackName = 'loadAllTests_' + Date.now();
+
+            document.getElementById('testListLoading').style.display = 'block';
+            document.getElementById('testList').innerHTML = '';
+
+            window[callbackName] = function(data) {
+                delete window[callbackName];
+                const script = document.getElementById('jsonp-tests-script');
+                if (script) script.remove();
+
+                document.getElementById('testListLoading').style.display = 'none';
+
+                if (data.status === 'error' || !data.tests) {
+                    document.getElementById('testList').innerHTML = '<div class="empty-tests"><div class="icon">📋</div><p>Failed to load tests</p></div>';
+                    return;
+                }
+
+                if (data.tests.length === 0) {
+                    document.getElementById('testList').innerHTML = '<div class="empty-tests"><div class="icon">📋</div><p>No tests created yet. Create your first test below!</p></div>';
+                    return;
+                }
+
+                renderTestList(data.tests);
+            };
+
+            const script = document.createElement('script');
+            script.id = 'jsonp-tests-script';
+            script.src = `${SHEET_URL}?action=listTests&callback=${callbackName}`;
+            script.onerror = function() {
+                delete window[callbackName];
+                document.getElementById('testListLoading').style.display = 'none';
+                document.getElementById('testList').innerHTML = '<div class="empty-tests"><div class="icon">⚠️</div><p>Failed to load tests</p></div>';
+            };
+
+            document.head.appendChild(script);
+        }
+
+        function renderTestList(tests) {
+            const baseUrl = window.location.href.replace('admin.html', '');
+            const sheetUrl = 'https://docs.google.com/spreadsheets/d/1W-DtxbUcK5Wu0uTHOv0Kn7XeXC9weIIOae1WFT16-K0/edit';
+
+            const html = tests.map(test => {
+                const testUrl = `${baseUrl}index.html?test=${test.testId}`;
+                const date = new Date(test.created).toLocaleString();
+
+                return `
+                    <div class="test-card" data-test-id="${test.testId}">
+                        <div class="test-card-header">
+                            <h3>${test.testId}</h3>
+                        </div>
+                        <div class="test-card-info">
+                            Created: ${date} • ${test.videoCount} video${test.videoCount !== 1 ? 's' : ''}
+                        </div>
+                        <div class="test-card-actions">
+                            <button class="btn btn-secondary btn-small" onclick="copyTestUrl('${testUrl}')">
+                                📋 Copy Link
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="window.open('${testUrl}', '_blank')">
+                                🔗 Open Test
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="window.open('${sheetUrl}', '_blank')">
+                                📊 View Results
+                            </button>
+                            <button class="btn btn-delete btn-small" onclick="deleteTest('${test.testId}')">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('testList').innerHTML = html;
+        }
+
+        function copyTestUrl(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Test URL copied to clipboard!');
+            }).catch(err => {
+                prompt('Copy this URL:', url);
+            });
+        }
+
+        async function deleteTest(testId) {
+            if (!confirm(`Are you sure you want to delete test "${testId}"?\n\nThis will:\n• Remove the test configuration\n• Delete the results sheet tab\n• Delete the Drive folder with images\n\nThis action cannot be undone!`)) {
+                return;
+            }
+
+            const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxrRs5z4nJQTvMa9H_bE-Z__NkiMy3ywQVRx30YzrmIU_OwacVu073WpN8ziKCQJiagEA/exec';
+
+            try {
+                // Show loading state
+                const card = document.querySelector(`[data-test-id="${testId}"]`);
+                if (card) {
+                    card.style.opacity = '0.5';
+                    card.style.pointerEvents = 'none';
+                }
+
+                await fetch(SHEET_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'deleteTest',
+                        testId: testId
+                    })
+                });
+
+                // Reload the test list after short delay
+                setTimeout(() => {
+                    loadTests();
+                }, 1000);
+
+                alert(`Test "${testId}" has been deleted successfully!`);
+
+            } catch (error) {
+                console.error('Error deleting test:', error);
+                alert(`Failed to delete test: ${error.message}`);
+                // Reload anyway to see current state
+                loadTests();
+            }
+        }
+
         // Load on start
         loadVideos();
+        loadTests();
     </script>
 </body>
 </html>
