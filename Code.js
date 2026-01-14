@@ -272,7 +272,8 @@ function getOrCreateTestSheet(testId) {
       'Age Group',
       'Gender',
       'Video Title',
-      'Rating'
+      'Rating',
+      'Rating Score'
     ];
 
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -292,6 +293,20 @@ function getOrCreateTestSheet(testId) {
   }
 
   return sheet;
+}
+
+/**
+ * Convert rating text to numeric score (1-5)
+ */
+function ratingToScore(rating) {
+  const ratingMap = {
+    'hate': 1,
+    'no': 2,
+    'meh': 3,
+    'interesting': 4,
+    'love': 5
+  };
+  return ratingMap[rating] || 0;
 }
 
 /**
@@ -316,10 +331,14 @@ function writeResponseToSheet(sheet, data) {
       ageGroup,
       gender,
       'No ratings provided',
+      '',
       ''
     ]);
   } else {
     ratings.forEach(rating => {
+      const ratingText = rating.rating || '';
+      const ratingScore = ratingToScore(ratingText);
+
       sheet.appendRow([
         timestamp,
         testId,
@@ -328,7 +347,8 @@ function writeResponseToSheet(sheet, data) {
         ageGroup,
         gender,
         rating.video || '',
-        rating.rating || ''
+        ratingText,
+        ratingScore
       ]);
     });
   }
