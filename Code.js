@@ -52,7 +52,9 @@ function doGet(e) {
     const successResponse = {
       'status': 'success',
       'testId': testId,
-      'videos': testConfig.videos
+      'videos': testConfig.videos,
+      'testType': testConfig.testType || 'grid',
+      'matchupsPerThumbnail': testConfig.matchupsPerThumbnail
     };
 
     return ContentService.createTextOutput(callback + '(' + JSON.stringify(successResponse) + ')')
@@ -78,12 +80,14 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
 
     // Check what type of request this is
-    if (data.action === 'createTest') {
+    if (data.action === 'createTest' || data.action === 'createHeadToHeadTest') {
       return handleTestCreation(data);
     } else if (data.action === 'deleteTest') {
       return handleTestDeletion(data);
     } else if (data.testId && data.ratings) {
       return handleResultSubmission(data);
+    } else if (data.testId && data.results) {
+      return handleHeadToHeadResultSubmission(data);
     } else {
       throw new Error('Invalid request format');
     }
@@ -103,6 +107,8 @@ function doPost(e) {
 function handleTestCreation(data) {
   const testId = data.testId;
   const videos = data.videos || [];
+  const matchupsPerThumbnail = data.matchupsPerThumbnail || null; // For head-to-head tests
+  const testType = data.action === 'createHeadToHeadTest' ? 'head-to-head' : 'grid';
 
   if (!testId || videos.length === 0) {
     throw new Error('Invalid test data: missing testId or videos');
@@ -153,7 +159,7 @@ function handleTestCreation(data) {
   });
 
   // Store test config in sheet
-  saveTestConfig(testId, videosWithUrls);
+  saveTestConfig(testId, videosWithUrls, testType, matchupsPerThumbnail);
 
   return ContentService.createTextOutput(JSON.stringify({
     'status': 'success',
@@ -170,10 +176,29 @@ function handleResultSubmission(data) {
   const testId = data.testId || 'unknown-test';
 
   // Get or create the results sheet tab for this test
-  const sheet = getOrCreateTestSheet(testId);
+  const sheet = getOrCreateTestSheet(testId, 'grid');
 
   // Write the data to the sheet
   writeResponseToSheet(sheet, data);
+
+  return ContentService.createTextOutput(JSON.stringify({
+    'status': 'success',
+    'message': 'Data recorded successfully',
+    'testId': testId
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Handle head-to-head result submission - Write to results sheet
+ */
+function handleHeadToHeadResultSubmission(data) {
+  const testId = data.testId || 'unknown-test';
+
+  // Get or create the results sheet tab for this test
+  const sheet = getOrCreateTestSheet(testId, 'head-to-head');
+
+  // Write the data to the sheet
+  writeHeadToHeadResponseToSheet(sheet, data);
 
   return ContentService.createTextOutput(JSON.stringify({
     'status': 'success',
@@ -200,7 +225,7 @@ function getOrCreateDriveFolder() {
 /**
  * Save test configuration to TestConfigs sheet
  */
-function saveTestConfig(testId, videos) {
+function saveTestConfig(testId, videos, testType, matchupsPerThumbnail) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = spreadsheet.getSheetByName('TestConfigs');
 
@@ -213,7 +238,12 @@ function saveTestConfig(testId, videos) {
   }
 
   // Store config as JSON
-  const configJson = JSON.stringify({ videos: videos });
+  const config = {
+    videos: videos,
+    testType: testType || 'grid',
+    matchupsPerThumbnail: matchupsPerThumbnail
+  };
+  const configJson = JSON.stringify(config);
 
   sheet.appendRow([
     testId,
@@ -255,7 +285,7 @@ function getTestConfig(testId) {
 /**
  * Get existing results sheet tab or create a new one for the test ID
  */
-function getOrCreateTestSheet(testId) {
+function getOrCreateTestSheet(testId, testType) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheetName = 'Test-' + testId;
 
@@ -264,17 +294,33 @@ function getOrCreateTestSheet(testId) {
   if (!sheet) {
     sheet = spreadsheet.insertSheet(sheetName);
 
-    const headers = [
-      'Timestamp',
-      'Test ID',
-      'Name',
-      'Email',
-      'Age Group',
-      'Gender',
-      'Video Title',
-      'Rating',
-      'Rating Score'
-    ];
+    let headers;
+    if (testType === 'head-to-head') {
+      headers = [
+        'Timestamp',
+        'Test ID',
+        'Name',
+        'Email',
+        'Age Group',
+        'Gender',
+        'Matchup #',
+        'Thumbnail A',
+        'Thumbnail B',
+        'Winner'
+      ];
+    } else {
+      headers = [
+        'Timestamp',
+        'Test ID',
+        'Name',
+        'Email',
+        'Age Group',
+        'Gender',
+        'Video Title',
+        'Rating',
+        'Rating Score'
+      ];
+    }
 
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
@@ -357,6 +403,52 @@ function writeResponseToSheet(sheet, data) {
 }
 
 /**
+ * Write head-to-head results to the results sheet
+ */
+function writeHeadToHeadResponseToSheet(sheet, data) {
+  const timestamp = data.timestamp || new Date().toISOString();
+  const testId = data.testId || 'unknown';
+  const name = data.name || '';
+  const email = data.email || '';
+  const ageGroup = data.ageGroup || '';
+  const gender = data.gender || '';
+
+  const results = data.results || [];
+
+  if (results.length === 0) {
+    sheet.appendRow([
+      timestamp,
+      testId,
+      name,
+      email,
+      ageGroup,
+      gender,
+      'No results provided',
+      '',
+      '',
+      ''
+    ]);
+  } else {
+    results.forEach(result => {
+      sheet.appendRow([
+        timestamp,
+        testId,
+        name,
+        email,
+        ageGroup,
+        gender,
+        result.matchupNumber || '',
+        result.thumbnailA || '',
+        result.thumbnailB || '',
+        result.winner || ''
+      ]);
+    });
+  }
+
+  Logger.log('Wrote ' + results.length + ' head-to-head results to sheet for test: ' + testId);
+}
+
+/**
  * Test function - Create a sample test
  */
 function testCreateTest() {
@@ -424,7 +516,9 @@ function getAllTests() {
         tests.push({
           testId: data[i][0],
           created: data[i][1],
-          videoCount: config.videos ? config.videos.length : 0
+          videoCount: config.videos ? config.videos.length : 0,
+          testType: config.testType || 'grid',
+          matchupsPerThumbnail: config.matchupsPerThumbnail || null
         });
       } catch (error) {
         Logger.log('Error parsing test config for ' + data[i][0] + ': ' + error.toString());
