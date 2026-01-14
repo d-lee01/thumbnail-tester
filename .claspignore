@@ -1,0 +1,7 @@
+**/**
+!Code.js
+!appsscript.json
+.git/**
+node_modules/**
+_bmad/**
+.claude/**
