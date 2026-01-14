@@ -474,12 +474,21 @@
                 // Success! Update status
                 const baseUrl = window.location.href.replace('admin.html', '');
                 const testerUrl = `${baseUrl}index.html?test=${testId}`;
+                const sheetUrl = `https://docs.google.com/spreadsheets/d/1W-DtxbUcK5Wu0uTHOv0Kn7XeXC9weIIOae1WFT16-K0/edit`;
 
                 document.getElementById('statusInfo').innerHTML = `
                     <span class="status success">✓ Published</span>
                     <p style="margin-top: 15px; color: #aaa;">
                         Test <strong>${testId}</strong> is live with ${videos.length} videos!<br>
                         Images stored in Google Drive. Ready to share!
+                    </p>
+                    <p style="margin-top: 10px;">
+                        <a href="${sheetUrl}" target="_blank" style="color: #3ea6ff; text-decoration: none; font-weight: 600;">
+                            📊 View Results in Google Sheet →
+                        </a>
+                        <span style="color: #666; font-size: 0.9rem; margin-left: 8px;">
+                            (Look for tab: Test-${testId})
+                        </span>
                     </p>
                 `;
 
