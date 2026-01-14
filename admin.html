@@ -248,6 +248,19 @@
 
         <div class="section">
             <h2>Upload Thumbnails</h2>
+
+            <div class="info-box" style="margin-bottom: 20px;">
+                <h3>Test ID</h3>
+                <p style="margin-bottom: 10px;">Give this test a unique name (letters, numbers, hyphens only)</p>
+                <input
+                    type="text"
+                    id="testId"
+                    placeholder="e.g. marketing-team-jan2026"
+                    style="width: 100%; padding: 12px; font-size: 1rem; background: #0f0f0f; color: #fff; border: 1px solid #3a3a3a; border-radius: 4px;"
+                    value="">
+                <button class="btn btn-secondary" onclick="generateTestId()" style="margin-top: 10px;">Generate Random ID</button>
+            </div>
+
             <div class="upload-area" id="uploadArea">
                 <div class="icon">📤</div>
                 <p>Drag & drop thumbnail images here</p>
@@ -390,8 +403,28 @@
             }
         }
 
+        function generateTestId() {
+            const timestamp = Date.now().toString(36);
+            const random = Math.random().toString(36).substring(2, 7);
+            const testId = `test-${timestamp}-${random}`;
+            document.getElementById('testId').value = testId;
+        }
+
         function publishTest() {
-            // Validate
+            // Validate test ID
+            const testId = document.getElementById('testId').value.trim();
+            if (!testId) {
+                alert('Please enter a Test ID or generate one');
+                return;
+            }
+
+            // Validate test ID format (alphanumeric and hyphens only)
+            if (!/^[a-zA-Z0-9-]+$/.test(testId)) {
+                alert('Test ID can only contain letters, numbers, and hyphens');
+                return;
+            }
+
+            // Validate videos
             if (videos.length === 0) {
                 alert('Please upload at least one thumbnail');
                 return;
@@ -403,43 +436,46 @@
                 return;
             }
 
-            // Save to localStorage (skip if quota exceeded - not essential for publishing)
+            // Save to localStorage with test ID
             try {
-                localStorage.setItem('thumbnail-test-videos', JSON.stringify(videos));
+                localStorage.setItem(`thumbnail-test-${testId}`, JSON.stringify(videos));
             } catch(e) {
                 console.log('localStorage full, continuing without save');
             }
 
-            // Create data.json file content
+            // Create data-{testId}.json file content
             const dataJson = {
+                testId: testId,
                 videos: videos.map(v => ({
                     title: v.title,
                     thumbnail: v.thumbnail
                 }))
             };
 
-            // Download data.json
+            // Download data-{testId}.json
             const blob = new Blob([JSON.stringify(dataJson, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'data.json';
+            a.download = `data-${testId}.json`;
             a.click();
 
             // Update status
+            const baseUrl = window.location.href.replace('admin.html', '');
+            const testerUrl = `${baseUrl}index.html?test=${testId}`;
+
             document.getElementById('statusInfo').innerHTML = `
                 <span class="status success">✓ Published</span>
                 <p style="margin-top: 15px; color: #aaa;">
-                    Test is live with ${videos.length} videos!<br>
-                    <strong>Important:</strong> Place the downloaded data.json file in the same folder as index.html
+                    Test <strong>${testId}</strong> is live with ${videos.length} videos!<br>
+                    <strong>Important:</strong> Place the downloaded data-${testId}.json file in the same folder as index.html
                 </p>
             `;
 
             // Update tester link
-            const testerUrl = window.location.href.replace('admin.html', 'index.html');
-            document.getElementById('testerLink').textContent = testerUrl;
+            document.getElementById('testerLink').innerHTML = `<a href="${testerUrl}" target="_blank" style="color: #3ea6ff;">${testerUrl}</a>`;
 
-            alert(`Test published successfully!\n\n1. Save the downloaded data.json file\n2. Place it in the same folder as index.html\n3. Share the tester link with your team`);
+            alert(`Test published successfully!\n\nTest ID: ${testId}\n\n1. Save the downloaded data-${testId}.json file\n2. Place it in the same folder as index.html\n3. Share this link with your team:\n${testerUrl}`);
         }
 
         // Load on start
