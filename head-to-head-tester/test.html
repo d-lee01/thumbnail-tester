@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head-to-Head Thumbnail Test</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .progress-bar {
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+            height: 10px;
+            margin: 20px auto;
+            max-width: 500px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: white;
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            color: white;
+            margin-top: 10px;
+            font-size: 1.1em;
+        }
+
+        /* Sign-in Screen */
+        .sign-in-screen {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .sign-in-screen h2 {
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .sign-in-screen p {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        /* User Info Form */
+        .user-info-form {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .user-info-form h2 {
+            color: #667eea;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .start-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Comparison Screen */
+        .comparison-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .comparison-title {
+            text-align: center;
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 30px;
+        }
+
+        .vs-container {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .thumbnail-option {
+            cursor: pointer;
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.3s;
+            background: #f8f9fa;
+            border: 3px solid transparent;
+            position: relative;
+        }
+
+        .thumbnail-option:hover {
+            transform: scale(1.05);
+            border-color: #667eea;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .thumbnail-option img {
+            width: 100%;
+            height: 400px;
+            object-fit: contain;
+            background: white;
+        }
+
+        .thumbnail-option-title {
+            padding: 20px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            background: white;
+        }
+
+        .vs-badge {
+            font-size: 3em;
+            font-weight: 800;
+            color: #667eea;
+            text-align: center;
+            background: white;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Thank You Screen */
+        .thank-you-screen {
+            background: white;
+            border-radius: 20px;
+            padding: 60px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .thank-you-screen h2 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .thank-you-screen p {
+            color: #666;
+            font-size: 1.2em;
+            line-height: 1.8;
+        }
+
+        .checkmark {
+            font-size: 5em;
+            margin-bottom: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .vs-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .vs-badge {
+                transform: rotate(90deg);
+            }
+
+            .thumbnail-option img {
+                height: 300px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .comparison-title {
+                font-size: 1.5em;
+            }
+        }
+
+        /* Winner Animation */
+        @keyframes winnerPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .thumbnail-option.winner {
+            animation: winnerPulse 0.5s ease;
+            border-color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Progress -->
+        <div class="header">
+            <h1>🥊 Which Thumbnail is Better?</h1>
+            <div class="progress-bar hidden" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text hidden" id="progressText">Question 1 of 10</div>
+        </div>
+
+        <!-- Sign-in Screen -->
+        <div id="signInScreen" class="sign-in-screen">
+            <h2>🔐 Sign In to Continue</h2>
+            <p>Please sign in with your Google account to participate in this thumbnail test.</p>
+            <div id="g_id_onload"
+                 data-client_id="126564210084-rg4d67gkhlfr0lbqk7q89vt1uuo7ju08.apps.googleusercontent.com"
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-size="large"
+                 data-theme="outline"
+                 data-text="sign_in_with"
+                 data-shape="rectangular"
+                 data-logo_alignment="left">
+            </div>
+        </div>
+
+        <!-- User Info Form -->
+        <div id="userInfoScreen" class="user-info-form hidden">
+            <h2>👤 Tell Us About Yourself</h2>
+            <form id="userInfoForm">
+                <div class="form-group">
+                    <label for="ageGroup">Age Group:</label>
+                    <select id="ageGroup" required>
+                        <option value="">Select your age group</option>
+                        <option value="Under 18">Under 18</option>
+                        <option value="18-24">18-24</option>
+                        <option value="25-34">25-34</option>
+                        <option value="35-44">35-44</option>
+                        <option value="45-54">45-54</option>
+                        <option value="55+">55+</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="gender">Gender:</label>
+                    <select id="gender" required>
+                        <option value="">Select your gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Non-binary">Non-binary</option>
+                        <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="start-btn">Start Test 🚀</button>
+            </form>
+        </div>
+
+        <!-- Comparison Screen -->
+        <div id="comparisonScreen" class="comparison-container hidden">
+            <h2 class="comparison-title">Which thumbnail would you click?</h2>
+            <div class="vs-container">
+                <div class="thumbnail-option" id="optionA" onclick="selectWinner('A')">
+                    <img id="thumbnailA" src="" alt="Option A">
+                    <div class="thumbnail-option-title" id="titleA"></div>
+                </div>
+
+                <div class="vs-badge">VS</div>
+
+                <div class="thumbnail-option" id="optionB" onclick="selectWinner('B')">
+                    <img id="thumbnailB" src="" alt="Option B">
+                    <div class="thumbnail-option-title" id="titleB"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thank You Screen -->
+        <div id="thankYouScreen" class="thank-you-screen hidden">
+            <div class="checkmark">✅</div>
+            <h2>Thank You!</h2>
+            <p>Your feedback has been recorded successfully.</p>
+            <p>Your insights will help improve these thumbnails!</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxrRs5z4nJQTvMa9H_bE-Z__NkiMy3ywQVRx30YzrmIU_OwacVu073WpN8ziKCQJiagEA/exec';
+
+        // Get test ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const testId = urlParams.get('test');
+
+        if (!testId) {
+            alert('Error: No test ID provided in URL');
+        }
+
+        // Global state
+        let userData = {
+            name: '',
+            email: '',
+            ageGroup: '',
+            gender: ''
+        };
+
+        let videos = [];
+        let matchups = [];
+        let currentMatchupIndex = 0;
+        let results = [];
+
+        // Google Sign-In Callback
+        function handleCredentialResponse(response) {
+            const credential = response.credential;
+            const payload = JSON.parse(atob(credential.split('.')[1]));
+
+            userData.name = payload.name || '';
+            userData.email = payload.email || '';
+
+            // Hide sign-in, show user info form
+            document.getElementById('signInScreen').classList.add('hidden');
+            document.getElementById('userInfoScreen').classList.remove('hidden');
+        }
+
+        // User Info Form Submit
+        document.getElementById('userInfoForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            userData.ageGroup = document.getElementById('ageGroup').value;
+            userData.gender = document.getElementById('gender').value;
+
+            // Hide form, load test, show comparison
+            document.getElementById('userInfoScreen').classList.add('hidden');
+            loadTest();
+        });
+
+        // Load test data via JSONP
+        function loadTest() {
+            const callbackName = 'loadTestData_' + Date.now();
+
+            window[callbackName] = function(data) {
+                delete window[callbackName];
+                const script = document.getElementById('jsonp-script');
+                if (script) script.remove();
+
+                if (data.status === 'error') {
+                    alert('Error loading test: ' + data.message);
+                    return;
+                }
+
+                videos = data.videos || [];
+                const matchupsPerThumbnail = data.matchupsPerThumbnail || 5;
+
+                if (videos.length < 2) {
+                    alert('Error: Test must have at least 2 thumbnails');
+                    return;
+                }
+
+                // Generate matchups
+                generateMatchups(matchupsPerThumbnail);
+
+                // Show comparison screen
+                document.getElementById('comparisonScreen').classList.remove('hidden');
+                document.getElementById('progressBar').classList.remove('hidden');
+                document.getElementById('progressText').classList.remove('hidden');
+
+                showCurrentMatchup();
+            };
+
+            const script = document.createElement('script');
+            script.id = 'jsonp-script';
+            script.src = `${SHEET_URL}?test=${testId}&callback=${callbackName}`;
+            script.onerror = function() {
+                alert('Failed to load test. Please check your internet connection and try again.');
+            };
+
+            document.head.appendChild(script);
+        }
+
+        // Generate matchups ensuring each thumbnail appears exactly N times
+        function generateMatchups(matchupsPerThumbnail) {
+            matchups = [];
+            const videoIndices = videos.map((_, i) => i);
+            const appearances = new Array(videos.length).fill(0);
+
+            // Create list of needed appearances
+            const needed = [];
+            for (let i = 0; i < videos.length; i++) {
+                for (let j = 0; j < matchupsPerThumbnail; j++) {
+                    needed.push(i);
+                }
+            }
+
+            // Shuffle needed appearances
+            shuffleArray(needed);
+
+            // Pair them up
+            for (let i = 0; i < needed.length; i += 2) {
+                if (i + 1 < needed.length) {
+                    const a = needed[i];
+                    const b = needed[i + 1];
+
+                    // Don't pair a video with itself
+                    if (a !== b) {
+                        matchups.push([a, b]);
+                    }
+                }
+            }
+
+            // Shuffle final matchups
+            shuffleArray(matchups);
+        }
+
+        // Shuffle array
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Show current matchup
+        function showCurrentMatchup() {
+            if (currentMatchupIndex >= matchups.length) {
+                // All done!
+                submitResults();
+                return;
+            }
+
+            const [indexA, indexB] = matchups[currentMatchupIndex];
+            const videoA = videos[indexA];
+            const videoB = videos[indexB];
+
+            document.getElementById('thumbnailA').src = videoA.thumbnail;
+            document.getElementById('titleA').textContent = videoA.title;
+            document.getElementById('thumbnailB').src = videoB.thumbnail;
+            document.getElementById('titleB').textContent = videoB.title;
+
+            // Update progress
+            const progress = ((currentMatchupIndex) / matchups.length) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('progressText').textContent =
+                `Question ${currentMatchupIndex + 1} of ${matchups.length}`;
+        }
+
+        // Select winner
+        function selectWinner(choice) {
+            const [indexA, indexB] = matchups[currentMatchupIndex];
+            const winnerIndex = choice === 'A' ? indexA : indexB;
+            const loserIndex = choice === 'A' ? indexB : indexA;
+
+            // Record result
+            results.push({
+                matchupNumber: currentMatchupIndex + 1,
+                thumbnailA: videos[indexA].title,
+                thumbnailB: videos[indexB].title,
+                winner: videos[winnerIndex].title
+            });
+
+            // Visual feedback
+            const winnerElement = choice === 'A' ? document.getElementById('optionA') : document.getElementById('optionB');
+            winnerElement.classList.add('winner');
+
+            // Move to next matchup after brief delay
+            setTimeout(() => {
+                winnerElement.classList.remove('winner');
+                currentMatchupIndex++;
+                showCurrentMatchup();
+            }, 500);
+        }
+
+        // Submit results
+        async function submitResults() {
+            document.getElementById('comparisonScreen').classList.add('hidden');
+            document.getElementById('progressBar').classList.add('hidden');
+            document.getElementById('progressText').classList.add('hidden');
+
+            const submitData = {
+                testId: testId,
+                timestamp: new Date().toISOString(),
+                name: userData.name,
+                email: userData.email,
+                ageGroup: userData.ageGroup,
+                gender: userData.gender,
+                results: results
+            };
+
+            try {
+                await fetch(SHEET_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(submitData)
+                });
+
+                document.getElementById('thankYouScreen').classList.remove('hidden');
+
+            } catch (error) {
+                alert('Error submitting results: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

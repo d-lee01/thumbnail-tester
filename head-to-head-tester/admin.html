@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head-to-Head Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .settings-group {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .settings-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .settings-group select {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .settings-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .info-text {
+            margin-top: 8px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .upload-area:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #e7e9ff;
+            border-color: #667eea;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .thumbnails-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .thumbnail-item {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: #f8f9fa;
+        }
+
+        .thumbnail-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: contain;
+            background: #fff;
+        }
+
+        .thumbnail-title {
+            padding: 10px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .thumbnail-title input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .remove-btn:hover {
+            background: #c82333;
+        }
+
+        .publish-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .publish-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .publish-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-message {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .test-url {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 8px;
+            border: 1px solid #b3d9ff;
+        }
+
+        .test-url input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #99ccff;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .copy-btn {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .copy-btn:hover {
+            background: #0056b3;
+        }
+
+        .tests-list {
+            margin-top: 30px;
+        }
+
+        .test-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 2px solid #e9ecef;
+        }
+
+        .test-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .test-card-info {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .test-card-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .test-card button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .test-card button:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-copy {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-open {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-results {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🥊 Head-to-Head Test Creator</h1>
+
+        <div class="card">
+            <h2>Create New Test</h2>
+
+            <div class="settings-group">
+                <label for="matchupsPerThumbnail">Matchups Per Thumbnail:</label>
+                <select id="matchupsPerThumbnail">
+                    <option value="3">3 matchups (quick test)</option>
+                    <option value="5" selected>5 matchups (recommended)</option>
+                    <option value="7">7 matchups (thorough)</option>
+                    <option value="10">10 matchups (comprehensive)</option>
+                </select>
+                <div class="info-text">
+                    Each thumbnail will be compared this many times. Total comparisons = (thumbnails × matchups) ÷ 2
+                </div>
+            </div>
+
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📸</div>
+                    <h3>Click or Drag Images Here</h3>
+                    <p>Upload thumbnails to test (minimum 2 images)</p>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" multiple>
+            </div>
+
+            <div class="thumbnails-grid" id="thumbnailsGrid"></div>
+
+            <button class="publish-btn" id="publishBtn" disabled>
+                🚀 Publish Test
+            </button>
+
+            <div id="statusMessage"></div>
+        </div>
+
+        <div class="card">
+            <h2>📋 Your Tests</h2>
+            <div id="testsList" class="tests-list">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading tests...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - UPDATE THIS with your Apps Script Web App URL
+        const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxrRs5z4nJQTvMa9H_bE-Z__NkiMy3ywQVRx30YzrmIU_OwacVu073WpN8ziKCQJiagEA/exec';
+        const SHEET_ID = '1W-DtxbUcK5Wu0uTHOv0Kn7XeXC9weIIOae1WFT16-K0';
+
+        let videos = [];
+
+        // DOM Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const thumbnailsGrid = document.getElementById('thumbnailsGrid');
+        const publishBtn = document.getElementById('publishBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const matchupsSelect = document.getElementById('matchupsPerThumbnail');
+
+        // Upload Area Events
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFiles);
+
+        // Drag and Drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles({ target: { files: e.dataTransfer.files } });
+        });
+
+        // Handle file uploads
+        function handleFiles(event) {
+            const files = Array.from(event.target.files);
+
+            files.forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    videos.push({
+                        title: file.name.replace(/\.[^/.]+$/, ''),
+                        thumbnail: e.target.result
+                    });
+                    renderThumbnails();
+                    updatePublishButton();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Render thumbnails grid
+        function renderThumbnails() {
+            thumbnailsGrid.innerHTML = videos.map((video, index) => `
+                <div class="thumbnail-item">
+                    <button class="remove-btn" onclick="removeVideo(${index})">×</button>
+                    <img src="${video.thumbnail}" alt="${video.title}">
+                    <div class="thumbnail-title">
+                        <input
+                            type="text"
+                            value="${video.title}"
+                            onchange="updateTitle(${index}, this.value)"
+                            placeholder="Video title"
+                        >
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Remove video
+        function removeVideo(index) {
+            videos.splice(index, 1);
+            renderThumbnails();
+            updatePublishButton();
+        }
+
+        // Update title
+        function updateTitle(index, newTitle) {
+            videos[index].title = newTitle;
+        }
+
+        // Update publish button state
+        function updatePublishButton() {
+            publishBtn.disabled = videos.length < 2;
+        }
+
+        // Generate unique test ID
+        function generateTestId() {
+            const timestamp = Date.now().toString(36);
+            const random = Math.random().toString(36).substring(2, 7);
+            return `h2h-${timestamp}-${random}`;
+        }
+
+        // Publish test
+        publishBtn.addEventListener('click', async () => {
+            if (videos.length < 2) {
+                showStatus('Please upload at least 2 images', 'error');
+                return;
+            }
+
+            const testId = generateTestId();
+            const matchupsPerThumbnail = parseInt(matchupsSelect.value);
+
+            publishBtn.disabled = true;
+            showStatus('Publishing test... Uploading images to Google Drive...', 'success');
+
+            try {
+                const response = await fetch(SHEET_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'createHeadToHeadTest',
+                        testId: testId,
+                        matchupsPerThumbnail: matchupsPerThumbnail,
+                        videos: videos.map(v => ({
+                            title: v.title,
+                            thumbnail: v.thumbnail
+                        }))
+                    })
+                });
+
+                // Success (no-cors mode means we can't read response, but if no error thrown, it worked)
+                const testUrl = `${window.location.origin}${window.location.pathname.replace('admin.html', 'test.html')}?test=${testId}`;
+
+                showStatus('✅ Test published successfully!', 'success');
+                showTestUrl(testUrl);
+
+                // Reset form
+                videos = [];
+                renderThumbnails();
+                updatePublishButton();
+                fileInput.value = '';
+
+                // Reload tests list
+                setTimeout(() => loadTests(), 1000);
+
+            } catch (error) {
+                showStatus('❌ Error: ' + error.message, 'error');
+                publishBtn.disabled = false;
+            }
+        });
+
+        // Show status message
+        function showStatus(message, type) {
+            statusMessage.innerHTML = `<div class="status-message ${type}">${message}</div>`;
+        }
+
+        // Show test URL
+        function showTestUrl(url) {
+            const urlHtml = `
+                <div class="test-url">
+                    <strong>🎯 Test URL:</strong>
+                    <input type="text" value="${url}" readonly id="testUrlInput">
+                    <button class="copy-btn" onclick="copyTestUrl()">📋 Copy URL</button>
+                </div>
+            `;
+            statusMessage.innerHTML += urlHtml;
+        }
+
+        // Copy test URL
+        function copyTestUrl() {
+            const input = document.getElementById('testUrlInput');
+            input.select();
+            document.execCommand('copy');
+            alert('Test URL copied to clipboard!');
+        }
+
+        // Load all tests
+        async function loadTests() {
+            const testsList = document.getElementById('testsList');
+            testsList.innerHTML = '<div class="loading"><div class="spinner"></div>Loading tests...</div>';
+
+            try {
+                const callbackName = 'loadAllTests_' + Date.now();
+
+                window[callbackName] = function(data) {
+                    delete window[callbackName];
+                    const script = document.getElementById('jsonp-script');
+                    if (script) script.remove();
+
+                    if (data.status === 'error') {
+                        testsList.innerHTML = `<div class="status-message error">Error: ${data.message}</div>`;
+                        return;
+                    }
+
+                    // Filter for head-to-head tests only
+                    const h2hTests = (data.tests || []).filter(t => t.testId.startsWith('h2h-'));
+
+                    if (h2hTests.length === 0) {
+                        testsList.innerHTML = '<p style="text-align: center; color: #666;">No tests yet. Create one above!</p>';
+                        return;
+                    }
+
+                    renderTestList(h2hTests);
+                };
+
+                const script = document.createElement('script');
+                script.id = 'jsonp-script';
+                script.src = `${SHEET_URL}?action=listTests&callback=${callbackName}`;
+                script.onerror = function() {
+                    testsList.innerHTML = '<div class="status-message error">Failed to load tests</div>';
+                };
+                document.head.appendChild(script);
+
+            } catch (error) {
+                testsList.innerHTML = `<div class="status-message error">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Render test list
+        function renderTestList(tests) {
+            const testsList = document.getElementById('testsList');
+            const baseUrl = window.location.origin + window.location.pathname.replace('admin.html', 'test.html');
+            const sheetUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`;
+
+            testsList.innerHTML = tests.map(test => {
+                const testUrl = `${baseUrl}?test=${test.testId}`;
+                const date = new Date(test.created).toLocaleString();
+                const matchupsInfo = test.matchupsPerThumbnail ? `${test.matchupsPerThumbnail} matchups per thumbnail` : '';
+
+                return `
+                    <div class="test-card" data-test-id="${test.testId}">
+                        <h3>${test.testId}</h3>
+                        <div class="test-card-info">
+                            📅 ${date} • 🖼️ ${test.videoCount} thumbnails • 🥊 ${matchupsInfo}
+                        </div>
+                        <div class="test-card-actions">
+                            <button class="btn-copy" onclick="copyTestUrl('${testUrl}')">📋 Copy Link</button>
+                            <button class="btn-open" onclick="window.open('${testUrl}', '_blank')">🔗 Open Test</button>
+                            <button class="btn-results" onclick="window.open('${sheetUrl}', '_blank')">📊 View Results</button>
+                            <button class="btn-delete" onclick="deleteTest('${test.testId}')">🗑️ Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Copy test URL from test card
+        function copyTestUrl(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Test URL copied to clipboard!');
+            }).catch(() => {
+                // Fallback
+                const input = document.createElement('input');
+                input.value = url;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                alert('Test URL copied to clipboard!');
+            });
+        }
+
+        // Delete test
+        async function deleteTest(testId) {
+            if (!confirm(`Delete test "${testId}"?\n\nThis will remove:\n• Test configuration\n• All results\n• All images from Google Drive\n\nThis cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                await fetch(SHEET_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'deleteTest',
+                        testId: testId
+                    })
+                });
+
+                // Reload tests after short delay
+                setTimeout(() => loadTests(), 1000);
+
+            } catch (error) {
+                alert('Error deleting test: ' + error.message);
+            }
+        }
+
+        // Load tests on page load
+        loadTests();
+    </script>
+</body>
+</html>
