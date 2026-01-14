@@ -519,7 +519,9 @@
             // Load video data from Apps Script
             const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxrRs5z4nJQTvMa9H_bE-Z__NkiMy3ywQVRx30YzrmIU_OwacVu073WpN8ziKCQJiagEA/exec';
 
-            fetch(`${SHEET_URL}?test=${testId}`)
+            fetch(`${SHEET_URL}?test=${testId}`, {
+                credentials: 'include'  // Include cookies for Google authentication
+            })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'error') {
