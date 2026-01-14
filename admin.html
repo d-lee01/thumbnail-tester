@@ -458,28 +458,18 @@
                     }))
                 };
 
+                // Use no-cors mode to avoid CORS preflight issues with Apps Script
                 const response = await fetch(SHEET_URL, {
                     method: 'POST',
+                    mode: 'no-cors',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(testData)
                 });
 
-                // Note: mode: 'no-cors' would hide response, so we use regular fetch
-                // Apps Script should return proper CORS headers
-
-                let result;
-                try {
-                    result = await response.json();
-                } catch (e) {
-                    // If JSON parsing fails, assume success (Apps Script might have CORS issues)
-                    result = { status: 'success' };
-                }
-
-                if (result.status === 'error') {
-                    throw new Error(result.message || 'Failed to create test');
-                }
+                // Note: no-cors mode means we can't read the response
+                // If fetch succeeds without error, we assume the request worked
 
                 // Success! Update status
                 const baseUrl = window.location.href.replace('admin.html', '');
