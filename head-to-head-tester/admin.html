@@ -343,6 +343,14 @@
             <h2>Create New Test</h2>
 
             <div class="settings-group">
+                <label for="testName">Test Name:</label>
+                <input type="text" id="testName" placeholder="e.g., Summer Campaign, Product Launch A/B Test" maxlength="50" style="width: 100%; padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px;">
+                <div class="info-text">
+                    Give your test a memorable name (this will appear in your results sheet)
+                </div>
+            </div>
+
+            <div class="settings-group">
                 <label for="matchupsPerThumbnail">Matchups Per Thumbnail:</label>
                 <select id="matchupsPerThumbnail">
                     <option value="3">3 matchups (quick test)</option>
@@ -488,6 +496,12 @@
                 return;
             }
 
+            const testName = document.getElementById('testName').value.trim();
+            if (!testName) {
+                showStatus('Please enter a test name', 'error');
+                return;
+            }
+
             const testId = generateTestId();
             const matchupsPerThumbnail = parseInt(matchupsSelect.value);
 
@@ -504,6 +518,7 @@
                     body: JSON.stringify({
                         action: 'createHeadToHeadTest',
                         testId: testId,
+                        testName: testName,
                         matchupsPerThumbnail: matchupsPerThumbnail,
                         videos: videos.map(v => ({
                             title: v.title,
@@ -523,6 +538,7 @@
                 renderThumbnails();
                 updatePublishButton();
                 fileInput.value = '';
+                document.getElementById('testName').value = '';
 
                 // Reload tests list
                 setTimeout(() => loadTests(), 1000);
@@ -610,20 +626,22 @@
                 const testUrl = `${baseUrl}?test=${test.testId}`;
                 const date = new Date(test.created).toLocaleString();
                 const matchupsInfo = test.matchupsPerThumbnail ? `${test.matchupsPerThumbnail} matchups per thumbnail` : '';
+                const displayName = test.testName || test.testId; // Use test name if available
 
                 // For head-to-head tests, note that results are in the Summary tab
-                const resultsLabel = '📊 View Summary';
+                const resultsLabel = '📊 View Results';
+                const sheetTabName = test.testName || test.testId;
 
                 return `
                     <div class="test-card" data-test-id="${test.testId}">
-                        <h3>${test.testId}</h3>
+                        <h3>${displayName}</h3>
                         <div class="test-card-info">
                             📅 ${date} • 🖼️ ${test.videoCount} thumbnails • 🥊 ${matchupsInfo}
                         </div>
                         <div class="test-card-actions">
                             <button class="btn-copy" onclick="copyTestUrl('${testUrl}')">📋 Copy Link</button>
                             <button class="btn-open" onclick="window.open('${testUrl}', '_blank')">🔗 Open Test</button>
-                            <button class="btn-results" onclick="window.open('${sheetUrl}', '_blank')" title="Open Google Sheets - look for '${test.testId}-Summary' tab">${resultsLabel}</button>
+                            <button class="btn-results" onclick="window.open('${sheetUrl}', '_blank')" title="Look for sheet tab: ${sheetTabName}">${resultsLabel}</button>
                             <button class="btn-delete" onclick="deleteTest('${test.testId}')">🗑️ Delete</button>
                         </div>
                     </div>

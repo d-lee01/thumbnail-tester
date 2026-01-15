@@ -106,6 +106,7 @@ function doPost(e) {
  */
 function handleTestCreation(data) {
   const testId = data.testId;
+  const testName = data.testName || testId; // Use provided name or fall back to ID
   const videos = data.videos || [];
   const matchupsPerThumbnail = data.matchupsPerThumbnail || null; // For head-to-head tests
   const testType = data.action === 'createHeadToHeadTest' ? 'head-to-head' : 'grid';
@@ -159,7 +160,7 @@ function handleTestCreation(data) {
   });
 
   // Store test config in sheet
-  saveTestConfig(testId, videosWithUrls, testType, matchupsPerThumbnail);
+  saveTestConfig(testId, videosWithUrls, testType, matchupsPerThumbnail, testName);
 
   return ContentService.createTextOutput(JSON.stringify({
     'status': 'success',
@@ -175,8 +176,8 @@ function handleTestCreation(data) {
 function handleResultSubmission(data) {
   const testId = data.testId || 'unknown-test';
 
-  // Get or create the results sheet tab for this test
-  const sheet = getOrCreateTestSheet(testId, 'grid');
+  // Grid tests don't need testName, they use Test-{testId} format
+  const sheet = getOrCreateTestSheet(testId, 'grid', null);
 
   // Write the data to the sheet
   writeResponseToSheet(sheet, data);
@@ -194,14 +195,18 @@ function handleResultSubmission(data) {
 function handleHeadToHeadResultSubmission(data) {
   const testId = data.testId || 'unknown-test';
 
+  // Get test config to retrieve test name
+  const testConfig = getTestConfig(testId);
+  const testName = testConfig ? (testConfig.testName || testId) : testId;
+
   // Get or create the results sheet tab for this test
-  const sheet = getOrCreateTestSheet(testId, 'head-to-head');
+  const sheet = getOrCreateTestSheet(testId, 'head-to-head', testName);
 
   // Write the data to the sheet
   writeHeadToHeadResponseToSheet(sheet, data);
 
-  // Update summary sheet with aggregated results
-  updateHeadToHeadSummary(testId);
+  // Update summary section with aggregated results
+  updateHeadToHeadSummary(sheet);
 
   return ContentService.createTextOutput(JSON.stringify({
     'status': 'success',
@@ -228,7 +233,7 @@ function getOrCreateDriveFolder() {
 /**
  * Save test configuration to TestConfigs sheet
  */
-function saveTestConfig(testId, videos, testType, matchupsPerThumbnail) {
+function saveTestConfig(testId, videos, testType, matchupsPerThumbnail, testName) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = spreadsheet.getSheetByName('TestConfigs');
 
@@ -244,7 +249,8 @@ function saveTestConfig(testId, videos, testType, matchupsPerThumbnail) {
   const config = {
     videos: videos,
     testType: testType || 'grid',
-    matchupsPerThumbnail: matchupsPerThumbnail
+    matchupsPerThumbnail: matchupsPerThumbnail,
+    testName: testName || testId
   };
   const configJson = JSON.stringify(config);
 
@@ -254,7 +260,7 @@ function saveTestConfig(testId, videos, testType, matchupsPerThumbnail) {
     configJson
   ]);
 
-  Logger.log('Saved test config for: ' + testId);
+  Logger.log('Saved test config for: ' + testId + ' (' + (testName || testId) + ')');
 }
 
 /**
@@ -288,136 +294,96 @@ function getTestConfig(testId) {
 /**
  * Get existing results sheet tab or create a new one for the test ID
  */
-function getOrCreateTestSheet(testId, testType) {
+function getOrCreateTestSheet(testId, testType, testName) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const sheetName = 'Test-' + testId;
+  const sheetName = testType === 'head-to-head' && testName ? testName : 'Test-' + testId;
 
   let sheet = spreadsheet.getSheetByName(sheetName);
 
   if (!sheet) {
     sheet = spreadsheet.insertSheet(sheetName);
 
-    let headers;
     if (testType === 'head-to-head') {
-      headers = [
-        'Timestamp',
-        'Test ID',
-        'Name',
-        'Email',
-        'Age Group',
-        'Gender',
-        'Matchup #',
-        'Thumbnail A',
-        'Thumbnail B',
-        'Winner'
-      ];
+      // Create combined sheet with summary at top, raw data below
+
+      // Summary section headers
+      const summaryHeaders = ['RANKING', '', '', '', '', ''];
+      sheet.getRange(1, 1, 1, 6).setValues([summaryHeaders]);
+      sheet.getRange(1, 1, 1, 6).merge();
+      sheet.getRange(1, 1).setFontSize(14).setFontWeight('bold').setBackground('#28a745').setFontColor('#ffffff').setHorizontalAlignment('center');
+
+      const rankingHeaders = ['Rank', 'Thumbnail', 'Wins', 'Losses', 'Total', 'Win Rate %'];
+      sheet.getRange(2, 1, 1, 6).setValues([rankingHeaders]);
+      const rankHeaderRange = sheet.getRange(2, 1, 1, 6);
+      rankHeaderRange.setFontWeight('bold').setBackground('#28a745').setFontColor('#ffffff').setHorizontalAlignment('center');
+
+      // Set column widths for summary
+      sheet.setColumnWidth(1, 80);  // Rank
+      sheet.setColumnWidth(2, 250); // Thumbnail
+      sheet.setColumnWidth(3, 100); // Wins
+      sheet.setColumnWidth(4, 100); // Losses
+      sheet.setColumnWidth(5, 100); // Total
+      sheet.setColumnWidth(6, 120); // Win Rate
+
+      // Add separator and raw data section (starting at row 15)
+      const rawDataStartRow = 15;
+      sheet.getRange(rawDataStartRow - 1, 1, 1, 10).merge();
+      sheet.getRange(rawDataStartRow - 1, 1).setValue('RAW DATA').setFontSize(12).setFontWeight('bold').setBackground('#4285f4').setFontColor('#ffffff').setHorizontalAlignment('center');
+
+      const rawHeaders = ['Timestamp', 'Test ID', 'Name', 'Email', 'Age Group', 'Gender', 'Matchup #', 'Thumbnail A', 'Thumbnail B', 'Winner'];
+      sheet.getRange(rawDataStartRow, 1, 1, 10).setValues([rawHeaders]);
+      const rawHeaderRange = sheet.getRange(rawDataStartRow, 1, 1, 10);
+      rawHeaderRange.setFontWeight('bold').setBackground('#4285f4').setFontColor('#ffffff');
+
+      sheet.setFrozenRows(2); // Freeze summary headers
+
+      Logger.log('Created combined results sheet: ' + sheetName);
     } else {
-      headers = [
-        'Timestamp',
-        'Test ID',
-        'Name',
-        'Email',
-        'Age Group',
-        'Gender',
-        'Video Title',
-        'Rating',
-        'Rating Score'
-      ];
-    }
+      // Grid test - original format
+      const headers = ['Timestamp', 'Test ID', 'Name', 'Email', 'Age Group', 'Gender', 'Video Title', 'Rating', 'Rating Score'];
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      const headerRange = sheet.getRange(1, 1, 1, headers.length);
+      headerRange.setFontWeight('bold').setBackground('#4285f4').setFontColor('#ffffff');
+      sheet.setFrozenRows(1);
 
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      for (let i = 1; i <= headers.length; i++) {
+        sheet.autoResizeColumn(i);
+      }
 
-    const headerRange = sheet.getRange(1, 1, 1, headers.length);
-    headerRange.setFontWeight('bold');
-    headerRange.setBackground('#4285f4');
-    headerRange.setFontColor('#ffffff');
-
-    sheet.setFrozenRows(1);
-
-    for (let i = 1; i <= headers.length; i++) {
-      sheet.autoResizeColumn(i);
-    }
-
-    Logger.log('Created new results sheet: ' + sheetName);
-
-    // Create summary sheet for head-to-head tests
-    if (testType === 'head-to-head') {
-      createHeadToHeadSummarySheet(testId);
+      Logger.log('Created grid results sheet: ' + sheetName);
     }
   }
 
   return sheet;
 }
 
-/**
- * Create a summary sheet for head-to-head test results
- */
-function createHeadToHeadSummarySheet(testId) {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const summarySheetName = 'Test-' + testId + '-Summary';
-
-  // Check if summary sheet already exists
-  let summarySheet = spreadsheet.getSheetByName(summarySheetName);
-  if (summarySheet) {
-    return summarySheet;
-  }
-
-  // Create summary sheet
-  summarySheet = spreadsheet.insertSheet(summarySheetName);
-
-  // Set up headers
-  const headers = ['Rank', 'Thumbnail', 'Wins', 'Losses', 'Total Matchups', 'Win Rate %'];
-  summarySheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-
-  const headerRange = summarySheet.getRange(1, 1, 1, headers.length);
-  headerRange.setFontWeight('bold');
-  headerRange.setBackground('#28a745');
-  headerRange.setFontColor('#ffffff');
-  headerRange.setHorizontalAlignment('center');
-
-  summarySheet.setFrozenRows(1);
-
-  // Auto-resize columns
-  for (let i = 1; i <= headers.length; i++) {
-    summarySheet.setColumnWidth(i, i === 2 ? 250 : 120);
-  }
-
-  Logger.log('Created summary sheet: ' + summarySheetName);
-
-  return summarySheet;
-}
 
 /**
- * Update head-to-head summary sheet with aggregated results
+ * Update head-to-head summary section with aggregated results
  */
-function updateHeadToHeadSummary(testId) {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const dataSheetName = 'Test-' + testId;
-  const summarySheetName = 'Test-' + testId + '-Summary';
+function updateHeadToHeadSummary(sheet) {
+  const rawDataStartRow = 15;
+  const lastRow = sheet.getLastRow();
 
-  const dataSheet = spreadsheet.getSheetByName(dataSheetName);
-  const summarySheet = spreadsheet.getSheetByName(summarySheetName);
-
-  if (!dataSheet || !summarySheet) {
-    Logger.log('Could not find data or summary sheet for: ' + testId);
+  if (lastRow < rawDataStartRow + 1) {
+    // No raw data yet
     return;
   }
 
-  // Get all data (skip header)
-  const data = dataSheet.getDataRange().getValues();
-  if (data.length <= 1) {
-    // No data yet
-    return;
-  }
+  // Get raw data (starting from row 16, which is rawDataStartRow + 1)
+  const dataRange = sheet.getRange(rawDataStartRow + 1, 1, lastRow - rawDataStartRow, 10);
+  const data = dataRange.getValues();
 
   // Aggregate results - column 10 (index 9) is the Winner
   const thumbnailStats = {};
 
-  for (let i = 1; i < data.length; i++) {
+  for (let i = 0; i < data.length; i++) {
     const row = data[i];
     const thumbnailA = row[7]; // Column H
     const thumbnailB = row[8]; // Column I
     const winner = row[9];     // Column J
+
+    if (!thumbnailA || !thumbnailB) continue; // Skip empty rows
 
     // Initialize stats for thumbnails
     if (!thumbnailStats[thumbnailA]) {
@@ -456,47 +422,47 @@ function updateHeadToHeadSummary(testId) {
   // Sort by win rate (descending)
   results.sort((a, b) => b.winRate - a.winRate);
 
-  // Clear existing data (keep header)
-  if (summarySheet.getLastRow() > 1) {
-    summarySheet.getRange(2, 1, summarySheet.getLastRow() - 1, 6).clear();
+  // Clear existing summary data (rows 3-13)
+  if (sheet.getRange(3, 1).getValue()) {
+    sheet.getRange(3, 1, 11, 6).clear();
   }
 
-  // Write results
+  // Write results to summary section (starting at row 3)
   const outputData = results.map((result, index) => [
     index + 1,                    // Rank
     result.thumbnail,             // Thumbnail
     result.wins,                  // Wins
     result.losses,                // Losses
     result.total,                 // Total Matchups
-    result.winRate.toFixed(1)     // Win Rate %
+    result.winRate.toFixed(1) + '%'  // Win Rate %
   ]);
 
   if (outputData.length > 0) {
-    summarySheet.getRange(2, 1, outputData.length, 6).setValues(outputData);
+    sheet.getRange(3, 1, outputData.length, 6).setValues(outputData);
 
     // Format the data
-    const dataRange = summarySheet.getRange(2, 1, outputData.length, 6);
+    const dataRange = sheet.getRange(3, 1, outputData.length, 6);
     dataRange.setHorizontalAlignment('center');
 
     // Highlight top 3
     if (outputData.length >= 1) {
-      summarySheet.getRange(2, 1, 1, 6).setBackground('#ffd700'); // Gold
+      sheet.getRange(3, 1, 1, 6).setBackground('#ffd700'); // Gold
     }
     if (outputData.length >= 2) {
-      summarySheet.getRange(3, 1, 1, 6).setBackground('#c0c0c0'); // Silver
+      sheet.getRange(4, 1, 1, 6).setBackground('#c0c0c0'); // Silver
     }
     if (outputData.length >= 3) {
-      summarySheet.getRange(4, 1, 1, 6).setBackground('#cd7f32'); // Bronze
+      sheet.getRange(5, 1, 1, 6).setBackground('#cd7f32'); // Bronze
     }
 
     // Bold rank column
-    summarySheet.getRange(2, 1, outputData.length, 1).setFontWeight('bold');
+    sheet.getRange(3, 1, outputData.length, 1).setFontWeight('bold');
 
     // Bold win rate column
-    summarySheet.getRange(2, 6, outputData.length, 1).setFontWeight('bold');
+    sheet.getRange(3, 6, outputData.length, 1).setFontWeight('bold');
   }
 
-  Logger.log('Updated summary for test: ' + testId);
+  Logger.log('Updated summary section in sheet: ' + sheet.getName());
 }
 
 /**
@@ -561,7 +527,7 @@ function writeResponseToSheet(sheet, data) {
 }
 
 /**
- * Write head-to-head results to the results sheet
+ * Write head-to-head results to the results sheet (raw data section)
  */
 function writeHeadToHeadResponseToSheet(sheet, data) {
   const timestamp = data.timestamp || new Date().toISOString();
@@ -572,6 +538,9 @@ function writeHeadToHeadResponseToSheet(sheet, data) {
   const gender = data.gender || '';
 
   const results = data.results || [];
+
+  // Find the last row in the sheet to append data
+  const lastRow = sheet.getLastRow();
 
   if (results.length === 0) {
     sheet.appendRow([
@@ -604,6 +573,54 @@ function writeHeadToHeadResponseToSheet(sheet, data) {
   }
 
   Logger.log('Wrote ' + results.length + ' head-to-head results to sheet for test: ' + testId);
+}
+
+/**
+ * Update summaries for all existing head-to-head tests
+ * Run this to refresh summary sections with latest data
+ */
+function updateAllHeadToHeadSummaries() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const configSheet = spreadsheet.getSheetByName('TestConfigs');
+
+  if (!configSheet) {
+    Logger.log('No TestConfigs sheet found');
+    return { processed: 0 };
+  }
+
+  const data = configSheet.getDataRange().getValues();
+  let processed = 0;
+
+  // Skip header row (index 0)
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0]) {
+      try {
+        const testId = data[i][0];
+        const config = JSON.parse(data[i][2]);
+
+        // Only process head-to-head tests
+        if (config.testType === 'head-to-head') {
+          const testName = config.testName || testId;
+          const sheet = spreadsheet.getSheetByName(testName);
+
+          if (sheet) {
+            Logger.log('Updating summary for: ' + testName);
+            updateHeadToHeadSummary(sheet);
+            processed++;
+          } else {
+            Logger.log('Sheet not found: ' + testName);
+          }
+        }
+      } catch (error) {
+        Logger.log('Error processing test ' + data[i][0] + ': ' + error.toString());
+      }
+    }
+  }
+
+  Logger.log('=== Update Complete ===');
+  Logger.log('Tests processed: ' + processed);
+
+  return { processed: processed };
 }
 
 /**
@@ -676,7 +693,8 @@ function getAllTests() {
           created: data[i][1],
           videoCount: config.videos ? config.videos.length : 0,
           testType: config.testType || 'grid',
-          matchupsPerThumbnail: config.matchupsPerThumbnail || null
+          matchupsPerThumbnail: config.matchupsPerThumbnail || null,
+          testName: config.testName || data[i][0]
         });
       } catch (error) {
         Logger.log('Error parsing test config for ' + data[i][0] + ': ' + error.toString());
@@ -700,15 +718,18 @@ function handleTestDeletion(data) {
     throw new Error('Missing test ID for deletion');
   }
 
+  // Get test config to find the sheet name
+  const testConfig = getTestConfig(testId);
+  const testName = testConfig ? testConfig.testName : null;
+
   // Delete from TestConfigs sheet
   deleteTestConfig(testId);
 
-  // Delete results sheet tab if it exists
-  deleteTestSheet(testId);
-
-  // Delete summary sheet tab if it exists (for head-to-head tests)
-  if (testId.startsWith('h2h-')) {
-    deleteTestSheet(testId + '-Summary');
+  // Delete results sheet tab (use test name if available)
+  if (testId.startsWith('h2h-') && testName) {
+    deleteTestSheetByName(testName);
+  } else {
+    deleteTestSheet(testId);
   }
 
   // Delete Drive folder if it exists
@@ -750,6 +771,19 @@ function deleteTestConfig(testId) {
 function deleteTestSheet(testId) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheetName = 'Test-' + testId;
+  const sheet = spreadsheet.getSheetByName(sheetName);
+
+  if (sheet) {
+    spreadsheet.deleteSheet(sheet);
+    Logger.log('Deleted results sheet: ' + sheetName);
+  }
+}
+
+/**
+ * Delete test results sheet by name
+ */
+function deleteTestSheetByName(sheetName) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = spreadsheet.getSheetByName(sheetName);
 
   if (sheet) {
