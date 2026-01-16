@@ -718,19 +718,24 @@ function handleTestDeletion(data) {
     throw new Error('Missing test ID for deletion');
   }
 
-  // Get test config to find the sheet name
+  // IMPORTANT: Get test config BEFORE deleting it (so we can find the sheet name)
   const testConfig = getTestConfig(testId);
   const testName = testConfig ? testConfig.testName : null;
+  const testType = testConfig ? testConfig.testType : null;
 
-  // Delete from TestConfigs sheet
-  deleteTestConfig(testId);
+  Logger.log('Deleting test: ' + testId + ' (name: ' + testName + ', type: ' + testType + ')');
 
   // Delete results sheet tab (use test name if available)
-  if (testId.startsWith('h2h-') && testName) {
+  if (testType === 'head-to-head' && testName) {
+    Logger.log('Deleting sheet by name: ' + testName);
     deleteTestSheetByName(testName);
   } else {
+    Logger.log('Deleting sheet by ID: Test-' + testId);
     deleteTestSheet(testId);
   }
+
+  // Delete from TestConfigs sheet (do this AFTER we've used the config)
+  deleteTestConfig(testId);
 
   // Delete Drive folder if it exists
   deleteTestDriveFolder(testId);
